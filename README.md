@@ -1,4 +1,3 @@
-
 # djay Pro MIDI Mapping Reference Guide
 
 ---
@@ -14,10 +13,8 @@
    - [Library Functions](#library-functions)
    - [Beatgrid & Analysis Functions](#beatgrid--analysis-functions)
    - [Application Functions](#application-functions)
-   - [Sampler Functions](#sampler-functions)
-   - [Queue Management Functions](#queue-management-functions)
+   - [Sampler & Unmixer Functions](#sampler--unmixer-functions)
    - [Video & Visual Functions](#video--visual-functions)
-   - [Streaming & Cloud Functions](#streaming--cloud-functions)
 2. [MIDI Message Types & Control Types](#midi-message-types--control-types)
 3. [Output Commands & LED Feedback](#output-commands--led-feedback)
 4. [MIDI Mapping File Format](#midi-mapping-file-format)
@@ -28,7 +25,7 @@
 
 ## djay Pro Functions Reference
 
-> **Note:** In the `Key Path` column, `{N}` represents the deck number and should be replaced with `1`, `2`, `3`, or `4` (e.g., `turntable1.playPause`).
+> **Note:** In the `Key Path` column, `{N}` represents the deck number and should be replaced with `1`, `2`, `3`, or `4` (e.g., `turntable1.playPause`). Brackets like `[1-4]` indicate a range (e.g., `mixer.lineVolume1`).
 
 ### Turntable Control Functions
 
@@ -50,7 +47,6 @@
 | Backspin | `turntable{N}.backspin` | Triggers a backspin effect | ✅ |
 | Brake Effect | `turntable{N}.brakeTransitionEffect` | Triggers a brake/vinyl stop effect | ✅ |
 
-
 #### Pitch Control
 
 | Function | Key Path | Description | LED Support |
@@ -69,8 +65,6 @@
 | BPM Sync | `turntable{N}.bpmSync` | Sync to master tempo | ✅ |
 | Sync Master | `turntable{N}.turntableIsSyncMaster` | Set as sync master | ✅ |
 | Toggle Quantize | `turntable{N}.toggleQuantize` | Enable/disable quantization | ✅ |
-| Down Beat | `turntable{N}.downBeat` | Mark down beat | ❌ |
-| BPM Restore | `turntable{N}.bpmAndDownBeatRestoreAnalyzed` | Restore analyzed BPM | ❌ |
 
 #### Audio Processing
 
@@ -91,13 +85,9 @@
 
 | Function | Key Path | Description | LED Support |
 |----------|----------|-------------|-------------|
-| Cue 1 | `turntable{N}.cuePositionOrJumpConsideringPlayState1` | Set/jump to cue point 1 | ✅ |
-| Cue 2 | `turntable{N}.cueOrJumpIfAlreadySet2` | Set/jump to cue point 2 | ✅ |
-| Cue 3 | `turntable{N}.cueOrJumpIfAlreadySet3` | Set/jump to cue point 3 | ✅ |
-| Cue End | `turntable{N}.cueOrJumpIfAlreadySetEnd` | Set/jump to end cue | ✅ |
-| Clear Cue 1 | `turntable{N}.clearCuePoint1` | Clear cue point 1 | ❌ |
-| Clear Cue 2 | `turntable{N}.clearCuePoint2` | Clear cue point 2 | ❌ |
-| Clear Cue 3 | `turntable{N}.clearCuePoint3` | Clear cue point 3 | ❌ |
+| Cue 1-8 | `turntable{N}.cuePositionOrJumpConsideringPlayState[1-8]` | Set/jump to cue point | ✅ |
+| Cue 1-8 (alternate) | `turntable{N}.cueOrJumpIfAlreadySet[1-8]`| Set/jump to cue point | ✅ |
+| Clear Cue 1-8 | `turntable{N}.clearCuePoint[1-8]` | Clear a specific cue point | ❌ |
 | Clear End Point | `turntable{N}.clearEndPoint` | Clear end point | ❌ |
 | Clear Start Point | `turntable{N}.clearStartPoint` | Clear start point | ❌ |
 | Reset Cue Points | `turntable{N}.resetCuePoints` | Clear all cue points | ❌ |
@@ -146,11 +136,11 @@
 |----------|----------|-------------|-------------|
 | Scratching Mode | `turntable{N}.scratchingMode` | Enable scratch mode | ✅ |
 | Scratching Move | `turntable{N}.scratchingMove` | Scratch wheel input | ❌ |
-| Jog Seek Move | `turntable{N}.jogSeekMove` | Jog wheel movement | ❌ |
-| Jog Seek Mode | `turntable{N}.jogSeekModeToggle` | Toggle jog mode | ✅ |
+| Jog Seek Move | `turntable{N}.jogSeekMove` | Jog wheel movement for seeking | ❌ |
+| Jog Seek Mode | `turntable{N}.jogSeekModeToggle` | Toggle jog mode (seek vs. pitch bend) | ✅ |
 | Scrubbing | `turntable{N}.scrubbing` | High-speed track search | ❌ |
 | Deck Slip Toggle | `turntable{N}.deckSlipToggle` | Enable slip mode | ✅ |
-| Skip Rotary | `turntable{N}.skipRotary` | Track skip control | ❌ |
+| Skip Rotary | `turntable{N}.skipRotary` | Track skip control (rotary) | ❌ |
 
 ### Effects Functions
 
@@ -158,7 +148,7 @@
 
 | Function | Key Path | Description | LED Support |
 |----------|----------|-------------|-------------|
-| FX Active | `turntable{N}.fxActive` | Master FX on/off | ✅ |
+| FX Active | `turntable{N}.fxActive` | Master FX on/off for a deck | ✅ |
 | FX 1 Enabled | `turntable{N}.fx1Enabled` | Effect slot 1 on/off | ✅ |
 | FX 2 Enabled | `turntable{N}.fx2Enabled` | Effect slot 2 on/off | ✅ |
 | FX 3 Enabled | `turntable{N}.fx3Enabled` | Effect slot 3 on/off | ✅ |
@@ -170,23 +160,14 @@
 
 | Function | Key Path | Description | LED Support |
 |----------|----------|-------------|-------------|
-| FX 1 Wet/Dry | `turntable{N}.fx1WetDryValue` | Effect 1 mix amount | ❌ |
-| FX 2 Wet/Dry | `turntable{N}.fx2WetDryValue` | Effect 2 mix amount | ❌ |
-| FX 3 Wet/Dry | `turntable{N}.fx3WetDryValue` | Effect 3 mix amount | ❌ |
-| FX 1 Parameter | `turntable{N}.fx1ParameterValue` | Effect 1 parameter | ❌ |
-| FX 2 Parameter | `turntable{N}.fx2ParameterValue` | Effect 2 parameter | ❌ |
-| FX 3 Parameter | `turntable{N}.fx3ParameterValue` | Effect 3 parameter | ❌ |
+| FX 1-3 Wet/Dry | `turntable{N}.fx[1-3]WetDryValue` | Effect mix amount | ❌ |
+| FX 1-3 Parameter | `turntable{N}.fx[1-3]ParameterValue` | Effect parameter | ❌ |
 
-#### Instant Effects
-
-| Function | Key Path | Description | LED Support |
-|----------|----------|-------------|-------------|
-| Instant FX 1-3 | `turntable{N}.instantFx[1-3]` | Trigger instant effect 1, 2, or 3 | ✅ |
-
-#### Bounce Effects
+#### Instant & Bounce Effects
 
 | Function | Key Path | Description | LED Support |
 |---|---|---|---|
+| Instant FX 1-3 | `turntable{N}.instantFx[1-3]` | Trigger instant effect | ✅ |
 | Bounce Bit Crusher | `turntable{N}.fxBounceBitCrusher` | Bounce bit crusher | ✅ |
 | Bounce Echo Censor | `turntable{N}.fxBounceEchoCensor` | Bounce echo censor | ✅ |
 | Bounce Echo Extreme | `turntable{N}.fxBounceEchoExtreme` | Bounce echo extreme | ✅ |
@@ -202,24 +183,18 @@
 
 | Function | Key Path | Description | LED Support |
 |---|---|---|---|
-| Line Volume 1-4 | `mixer.lineVolume[1-4]` | Channel volume | ❌ |
+| Line Volume 1-4 | `mixer.lineVolume[1-4]` | Channel volume fader | ❌ |
 | Crossfader | `mixer.crossfade` | Crossfader position | ❌ |
 | Master Level | `mixer.masterLevel` | Master output level | ❌ |
-
-#### Monitoring
-
-| Function | Key Path | Description | LED Support |
-|---|---|---|---|
-| Monitor 1-4 | `mixer.monitorActive[1-4]` | Cue channel | ✅ |
+| Monitor 1-4 | `mixer.monitorActive[1-4]` | Cue channel button | ✅ |
 | Monitor Mix | `mixer.monitorMix` | Cue/main mix balance | ❌ |
 | Monitor Level | `mixer.monitorLevel` | Headphone volume level | ❌ |
 | Monitor Mute | `mixer.monitorLevelMuteOnOff`| Mute/unmute headphone output | ✅ |
 
-#### Special Mixer Functions
+#### Transitions
 
 | Function | Key Path | Description | LED Support |
 |---|---|---|---|
-| Jump to Cue | `mixer.jumpToCueConsideringPlayState1` | Jump to cue point | ❌ |
 | Transition Left | `mixer.transitionLeft` | Trigger transition to left deck | ✅ |
 | Transition Right | `mixer.transitionRight` | Trigger transition to right deck | ✅ |
 | Transition Type: Standard | `mixer.transitionTypeStandard` | Set transition type to standard crossfade | ✅ |
@@ -231,62 +206,22 @@
 | Function | Key Path | Description | LED Support |
 |---|---|---|---|
 | Library Rotary | `musicLibrary.libraryRotary` | Browse library | ❌ |
-| Load to Deck 1-4 | `musicLibrary.load[1-4]` | Load track to deck | ❌ |
+| Load to Deck 1-4 | `musicLibrary.load[1-4]` | Load selected track to a specific deck | ❌ |
 | Load Selection | `musicLibrary.loadSelection` | Load selected track to active/next deck | ❌ |
 | Toggle Source | `musicLibrary.toggleLibrarySource` | Switch library source (e.g., Local, Streaming) | ✅ |
 | Focus Sources | `musicLibrary.focusSources` | Focus UI on source panel | ❌ |
 | Focus Tracks | `musicLibrary.focusTracks` | Focus UI on track list panel | ❌ |
 | Mark/Unmark Songs | `musicLibrary.markUnmarkSelectedSongs`| Prepare songs for a session/playlist | ❌ |
 | Unmark Songs | `musicLibrary.unmarkSelectedSongs` | Clear all selections | ❌ |
-
-> **Note on Library Key Paths:** Some mappings use `turntable{N}.libraryRotary`. While this path is valid, its behavior can be unexpected. The recommended path for global library browsing is `musicLibrary.libraryRotary`.
-
-### Advanced Library Functions
-
-| Function | Key Path | Description | LED Support |
-|---|---|---|---|
-| Library Search | `musicLibrary.search` | Open search function | ❌ |
 | Preview Track | `musicLibrary.previewTrack` | Preview selected track | ✅ |
-| View Mode Toggle | `musicLibrary.toggleViewMode` | Switch list/grid view | ✅ |
-| Sort Toggle | `musicLibrary.toggleSort` | Change sort order | ❌ |
-| Playlist Up/Down | `musicLibrary.playlistUp` / `playlistDown` | Navigate up/down playlist | ❌ |
-| Add/Remove from Queue | `musicLibrary.addToQueue` / `removeFromQueue`| Add/remove track from queue | ❌ |
-| Toggle Favorites | `musicLibrary.toggleFavorite` | Mark as favorite | ✅ |
-| Show History | `musicLibrary.showHistory` | View play history | ❌ |
 | Auto-Mix Toggle | `musicLibrary.autoMixToggle` | Enable auto-mix mode | ✅ |
-| Library Filter | `musicLibrary.filter` | Apply library filter | ❌ |
-| Expand/Collapse Folder | `musicLibrary.expandFolder` / `collapseFolder` | Expand/collapse selected folder | ❌ |
-
-### Queue Management Functions
-
-| Function | Key Path | Description | LED Support |
-|---|---|---|---|
-| Queue Next/Previous | `queue.next` / `queue.previous` | Move to next/previous track in queue | ❌ |
-| Queue Clear | `queue.clear` | Clear entire queue | ❌ |
-| Queue Shuffle/Repeat | `queue.shuffle` / `queue.repeat` | Toggle queue shuffle/repeat | ✅ |
-| Queue Auto-Load | `queue.autoLoad` | Auto-load next track | ✅ |
-| Queue Show/Hide | `queue.toggleVisible` | Show/hide queue panel | ✅ |
-| Add to Top/Bottom | `queue.addToTop` / `addToBottom` | Add track to top/bottom of queue | ❌ |
-| Remove Selected | `queue.removeSelected` | Remove selected queue item | ❌ |
-
-### Video & Visual Functions
-
-| Function | Key Path | Description | LED Support |
-|---|---|---|---|
-| Video On/Off | `video.toggle` | Toggle video playback | ✅ |
-| Video Full Screen | `video.fullScreen` | Video full screen mode | ✅ |
-| Video Transition | `video.transition` | Video transition effect | ❌ |
-| Video BPM Sync | `video.bpmSync` | Sync video to BPM | ✅ |
-| Video Scratch | `video.scratch` | Enable video scratching | ✅ |
-| Video Cue | `video.cue` | Video cue functionality | ❌ |
-| Visualizer Toggle | `video.visualizerToggle` | Show/hide visualizer | ✅ |
-| Visualizer Mode | `video.visualizerMode` | Change visualizer type | ❌ |
 
 ### Beatgrid & Analysis Functions
 
 | Function | Key Path | Description | LED Support |
 |---|---|---|---|
 | Down Beat | `turntable{N}.downBeat` | Mark down beat | ❌ |
+| BPM Restore | `turntable{N}.bpmAndDownBeatRestoreAnalyzed` | Restore analyzed BPM | ❌ |
 | Beat Grid Edit | `turntable{N}.beatGridEdit` | Enter beat grid edit mode | ✅ |
 | Beat Grid Lock | `turntable{N}.beatGridLock` | Lock beat grid | ✅ |
 | Beat Grid Shift Left/Right | `turntable{N}.beatGridShiftLeft` / `beatGridShiftRight` | Shift grid | ❌ |
@@ -301,25 +236,12 @@
 | Function | Key Path | Description | LED Support |
 |---|---|---|---|
 | Modifier | `application.modifier` | Shift/modifier key | ✅ |
-| Reverse | `application.reverse` | Global reverse (for all decks) | ❌ |
+| Global Reverse | `application.reverse` | Global reverse (for all decks) | ❌ |
 | Global Gain/Filter | `application.gain` / `filter` | Global gain/filter control | ❌ |
-| Global Sync Master | `application.turntableIsSyncMaster` | Global sync master | ✅ |
-| Toggle EQ Mode (Global) | `application.toggleUnmixerEQMode` | Switch EQ mode for all decks | ✅ |
-| Toggle EQ Mode (Per Deck) | `turntable{N}.toggleUnmixerEQMode` | Switch EQ mode for a specific deck | ✅ |
 | Automix | `application.automix` | Toggle automix mode on/off | ✅ |
-
-### Advanced Application Functions
-
-| Function | Key Path | Description | LED Support |
-|---|---|---|---|
 | Record Toggle | `application.recordToggle` | Start/stop recording | ✅ |
-| Broadcast Toggle | `application.broadcastToggle` | Start/stop broadcasting | ✅ |
-| Video Toggle | `application.videoToggle` | Show/hide video | ✅ |
-| Full Screen | `application.fullScreen` | Toggle full screen mode | ❌ |
 | Preferences | `application.showPreferences` | Open preferences | ❌ |
 | Show/Hide Library | `application.toggleLibrary` | Toggle library visibility | ✅ |
-| Show/Hide Browser | `application.toggleBrowser` | Toggle browser panel | ✅ |
-| Show/Hide Queue | `application.toggleQueue` | Toggle queue panel | ✅ |
 | Show/Hide Sampler | `application.toggleSampler` | Toggle sampler panel | ✅ |
 | Undo/Redo | `application.undo` / `application.redo` | Undo/redo last action | ❌ |
 
@@ -327,43 +249,65 @@
 
 | Function | Key Path | Description | LED Support |
 |---|---|---|---|
-| Toggle Sampler | `sampler.toggleSamplerShown` | Show/hide sampler | ✅ |
+| Toggle Sampler | `sampler.toggleSamplerShown` | Show/hide sampler panel | ✅ |
 | Sampler Volume | `sampler.volume` | Sampler master volume | ❌ |
 | Player [1-8] | `sampler.player[1-8].playingConsideringHoldSetting` | Trigger sampler pad | ✅ |
-| Unmixer Track 1-3 Mute | `turntable{N}.unmixerThreeTrackChannel[1-3]Muted` | Mute track in unmix | ✅ |
+| Unmixer Track 1-3 Mute | `turntable{N}.unmixerThreeTrackChannel[1-3]Muted` | Mute instrument stem | ✅ |
+| Toggle EQ Mode (Global) | `application.toggleUnmixerEQMode` | Switch EQ mode for all decks | ✅ |
+| Toggle EQ Mode (Per Deck) | `turntable{N}.toggleUnmixerEQMode` | Switch EQ mode for a specific deck | ✅ |
+
+### Video & Visual Functions
+
+| Function | Key Path | Description | LED Support |
+|---|---|---|---|
+| Video On/Off | `video.toggle` | Toggle video playback | ✅ |
+| Video Full Screen | `video.fullScreen` | Video full screen mode | ✅ |
+| Video Transition | `video.transition` | Trigger video transition effect | ❌ |
 
 ---
 
-## midi message types & control types
+## MIDI Message Types & Control Types
 
-*This section remains largely the same as it is accurate and comprehensive. Please refer to the previous version.*
+### midiMessageType: How djay Interprets Signals
+
+This required field tells djay Pro what kind of MIDI message to expect.
+
+| Type | Value | Description | Use For |
+|---|---|---|---|
+| **Note On/Off** | `1` | Standard button/pad signal. Sends a note number (0-127) and a velocity (1-127 for on, 0 for off). | ✅ Buttons, pads, switches |
+| **Control Change (CC)** | `3` | A continuous signal from a knob or fader. Sends a controller number (0-127) and a value (0-127). | ✅ Knobs, faders, encoders |
+
+**Best Practice:** Always use `midiMessageType: 1` for buttons and `midiMessageType: 3` for continuous controls like knobs and faders.
+
+### controlType: The Physical Control
+
+This optional field helps djay Pro understand the physical hardware, especially for rotary encoders.
+
+| Type | Description | Use For |
+|---|---|---|
+| `button` | A standard push-button. Use with `midiMessageType: 1`. | Play, Cue, Sync, FX On/Off buttons |
+| `rotary` | An endless rotary encoder that sends relative changes (e.g., "turn left" or "turn right"). Use with `midiMessageType: 3`. | Browse knobs, FX parameter knobs |
+| `rotary-64`| An endless rotary encoder that uses a value of 64 as its center/neutral point. Use with `midiMessageType: 3`. | Jog wheels, filter knobs, pitch bend |
 
 ---
 
-## output commands & led feedback
+## Output Commands & LED Feedback
 
 ### How Output Works
 
-djay Pro sends MIDI messages **back** to your controller to provide visual feedback. This is a two-way communication system:
+djay Pro sends MIDI messages **back** to your controller to provide visual feedback (e.g., lighting up an LED). This is configured using the `<output>` dictionary.
 
-1.  **Input**: Controller → djay Pro (your button presses, knob turns)
-2.  **Output**: djay Pro → Controller (LED states, display updates)
-
-### Understanding the `<output>` Dictionary
-
-In the mapping file, LED output is configured within an `<output>` dictionary. The content of this dictionary determines the LED's behavior.
+### Basic Output Configurations
 
 | Configuration Example | Description |
 |---|---|
 | `<key>output</key><dict><key>midiMinValue</key><real>0</real><key>midiMaxValue</key><real>127</real></dict>` | **Standard On/Off.** This is the most common setup. The LED is OFF at value 0 and fully ON at value 127. |
-| `<key>output</key><dict><key>midiMinValue</key><real>50</real></dict>` | **Custom "On" Value.** The LED is OFF at value 0 and ON at the specified value (e.g., 50). This is useful for controllers with specific brightness levels. The `midiMaxValue` is not required. |
-| `<key>output</key><dict/>` | **Default Behavior.** An empty dictionary tells djay Pro to use its own default, built-in LED feedback for the function defined in `keyPath`. Use this when you don't need custom LED values. |
+| `<key>output</key><dict><key>midiMinValue</key><real>50</real></dict>` | **Custom "On" Value.** The LED is OFF at value 0 and ON at the specified value (e.g., 50). This is useful for controllers with specific brightness levels. |
+| `<key>output</key><dict/>` | **Default Behavior.** An empty dictionary tells djay Pro to use its own default, built-in LED feedback for the function defined in `keyPath`. |
 
-### <!-- NEW --> Advanced Output: Decoupled Input & Output
+### Advanced Output: Decoupled Input & Output
 
-For complex controllers (e.g., with dedicated VU meters), you can specify an output message that is completely different from the input message.
-
-**This is achieved by defining a full MIDI message inside the `<output>` block.**
+For complex controllers (e.g., with dedicated VU meters), you can specify an output message that is completely different from the input message. **This is achieved by defining a full MIDI message inside the `<output>` block.**
 
 ```xml
 <!-- 
@@ -391,24 +335,108 @@ This could be used to send volume level data to a separate LED strip on the cont
     </dict>
 </dict>
 ```
+---
 
-This powerful feature allows for mappings that are not possible with a simple input/output link.
+## MIDI Mapping File Format
+
+djay Pro uses Apple's Property List (`.plist`) format in XML. The file must have the `.djayMidiMapping` extension.
+
+### Root Structure
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Metadata -->
+    <key>endpointName</key>
+    <string>My Controller Name</string>
+    <key>schemeVersion</key>
+    <integer>1</integer>
+    <key>version</key>
+    <integer>0</integer>
+    <!-- Main mappings array -->
+    <key>controls</key>
+    <array>
+        <!-- Individual control entries go here -->
+    </array>
+</dict>
+</plist>
+```
+
+### Control Entry Fields
+
+| Key | Type | Description | Required |
+|---|---|---|---|
+| `keyPath` | String | The djay Pro function to control. See the reference section. | ✅ Yes |
+| `midiChannel` | Integer | The MIDI channel for input (0-15). | ✅ Yes |
+| `midiData` | Integer | The MIDI note or CC number (0-127). | ✅ Yes |
+| `midiMessageType` | Integer | The MIDI message type: `1` for Note, `3` for CC. | ✅ Yes |
+| `controlType` | String | Optional context for the control: `button`, `rotary`, `rotary-64`. | No |
+| `output` | Dict | LED feedback configuration. See the output section. | No |
+| `buttonMode` | String | Behavior for buttons: `toggle` (press on/off) or `hold` (on while pressed). | No |
+| `modifier` | Boolean | If `true`, this control is only active when a modifier key is held. | No |
+| `pickupMode` | Boolean | If `true`, prevents value jumps for faders/knobs. | No |
+| `rotarySensitivity` | Real | Sets the speed/sensitivity for rotary encoders. (e.g., 1.0 to 1000.0) | No |
+| `flipped` | Boolean | If `true`, reverses the direction of a fader or knob. | No |
 
 ---
 
-## midi mapping file format
+## Technical Specifications
 
-*This section remains the same. The structure is well-defined.*
-
----
-
-## technical specifications
-
-*This section remains the same.*
+- **MIDI Channels**: 0-15 (16 total channels)
+- **Note/CC Numbers**: 0-127 (128 notes/controllers per channel)
+- **Velocity/Values**: 0-127 (128 levels)
+- **Browser Compatibility (Web MIDI API)**: Chrome 43+, Edge 79+, Firefox 108+, Safari 14.1+
 
 ---
 
-## examples & best practices
+## Examples & Best Practices
+
+### Basic Button Mapping
+
+```xml
+<!-- Play/Pause Button for Deck 1 -->
+<dict>
+    <key>keyPath</key>
+    <string>turntable1.playPause</string>
+    <key>midiChannel</key>
+    <integer>0</integer>
+    <key>midiData</key>
+    <integer>11</integer>
+    <key>midiMessageType</key>
+    <integer>1</integer>
+    <key>controlType</key>
+    <string>button</string>
+    <!-- This output block ensures the LED turns on (val 127) when playing and off (val 0) when paused -->
+    <key>output</key>
+    <dict>
+        <key>midiMinValue</key>
+        <real>0</real>
+        <key>midiMaxValue</key>
+        <real>127</real>
+    </dict>
+</dict>
+```
+
+### Fader with Pickup Mode
+
+```xml
+<!-- Volume Fader for Deck 1 -->
+<dict>
+    <key>keyPath</key>
+    <string>mixer.lineVolume1</string>
+    <key>midiChannel</key>
+    <integer>0</integer>
+    <key>midiData</key>
+    <integer>69</integer>
+    <key>midiMessageType</key>
+    <integer>3</integer>
+    <!-- pickupMode prevents the volume from jumping if the physical and software faders are out of sync -->
+    <key>pickupMode</key>
+    <true/>
+</dict>
+```
 
 ### Implementing Shift/Modifier Layers
 
@@ -481,23 +509,5 @@ This method relies on the controller's hardware to send controls on a different 
 
 ### Best Practices
 
-#### General
-- **Use Note On/Off for Buttons:** Always use `midiMessageType: 1` for buttons, pads, and switches. Avoid using `midiMessageType: 3` (CC) for buttons.
-- **Use Pickup Mode for Faders:** Enable `<key>pickupMode</key><true/>` for all faders and knobs that control absolute values (volume, EQ, filter) to prevent sudden value jumps.
-- **Test with Hardware:** Always test your mapping on the actual controller before finalizing.
-
-#### Disabling a Control ("No-Op")
-- To make a control do nothing, you can map it to a base-level, non-functional `keyPath`. This is useful for disabling a control in a shift layer.
-```xml
-<!-- This makes the button on Note 32 do nothing. -->
-<dict>
-    <key>keyPath</key>
-    <string>turntable1</string> <!-- or "application" -->
-    <key>midiChannel</key>
-    <integer>0</integer>
-    <key>midiData</key>
-    <integer>32</integer>
-    <key>midiMessageType</key>
-    <integer>1</integer>
-</dict>
-```
+- **Channel Organization:** For clarity, use separate MIDI channels for each deck and for global controls (e.g., Deck 1 on Ch 0, Deck 2 on Ch 1, Mixer on Ch 15).
+- **Disabling a Control ("No-Op"):** To make a control do nothing, map it to a base-level, non-functional `keyPath` like `application` or `turntable1`. This is useful for disabling a control in a specific layer.
