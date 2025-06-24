@@ -344,17 +344,14 @@ djay Pro uses Apple's Property List (`.plist`) format in XML. The file must have
 ### Root Structure
 
 ```xml
+
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <!-- Metadata -->
-    <key>endpointName</key>
-    <string>My Controller Name</string>
-    <key>schemeVersion</key>
-    <integer>1</integer>
-    <key>version</key>
-    <integer>0</integer>
+	<key>USBID</key>
+	<integer>586153985</integer>
     <!-- Main mappings array -->
     <key>controls</key>
     <array>
