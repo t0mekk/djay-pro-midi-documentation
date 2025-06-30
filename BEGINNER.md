@@ -139,10 +139,14 @@ For controls like volume faders or EQ knobs, add `<key>pickupMode</key><true/>` 
 <dict>
     <key>keyPath</key>
     <string>mixer.lineVolume1</string>
-    <key>midiChannel</key><integer>0</integer>
-    <key>midiData</key><integer>19</integer>
-    <key>midiMessageType</key><integer>3</integer>
-    <key>pickupMode</key><true/> <!-- Prevents value jumps -->
+    <key>midiChannel</key>
+    <integer>0</integer>
+    <key>midiData</key>
+    <integer>19</integer>
+    <key>midiMessageType</key>
+    <integer>3</integer>
+    <key>pickupMode</key>
+    <true/> <!-- Prevents value jumps -->
 </dict>
 ```
 
@@ -153,11 +157,16 @@ For library browsing or parameter scrolling, use `controlType: rotary` or `rotar
 <dict>
     <key>keyPath</key>
     <string>musicLibrary.libraryRotary</string>
-    <key>midiChannel</key><integer>6</integer>
-    <key>midiData</key><integer>64</integer>
-    <key>midiMessageType</key><integer>3</integer>
-    <key>controlType</key><string>rotary</string>
-    <key>rotarySensitivity</key><real>75</real> <!-- Adjust for faster/slower scrolling -->
+    <key>midiChannel</key>
+    <integer>6</integer>
+    <key>midiData</key>
+    <integer>64</integer>
+    <key>midiMessageType</key>
+    <integer>3</integer>
+    <key>controlType</key>
+    <string>rotary</string>
+    <key>rotarySensitivity</key>
+    <real>75</real> <!-- Adjust for faster/slower scrolling -->
 </dict>
 ```
 
@@ -171,20 +180,30 @@ This is the cleanest, software-based method.
 ```xml
 <!-- 1. The SHIFT button itself is mapped to application.modifier -->
 <dict>
-    <key>buttonMode</key><string>hold</string>
-    <key>keyPath</key><string>application.modifier</string>
-    <key>midiChannel</key><integer>0</integer>
-    <key>midiData</key><integer>63</integer>
-    <key>midiMessageType</key><integer>1</integer>
+    <key>buttonMode</key>
+    <string>hold</string>
+    <key>keyPath</key>
+    <string>application.modifier</string>
+    <key>midiChannel</key>
+    <integer>0</integer>
+    <key>midiData</key>
+    <integer>63</integer>
+    <key>midiMessageType</key>
+    <integer>1</integer>
 </dict>
 
 <!-- 2. The shifted function. Note the <modifier/> key -->
 <dict>
-    <key>keyPath</key><string>turntable1.clearCuePoint1</string>
-    <key>midiChannel</key><integer>7</integer>
-    <key>midiData</key><integer>0</integer>
-    <key>midiMessageType</key><integer>1</integer>
-    <key>modifier</key><true/> <!-- This mapping is only active when the modifier is held -->
+    <key>keyPath</key>
+    <string>turntable1.clearCuePoint1</string>
+    <key>midiChannel</key>
+    <integer>7</integer>
+    <key>midiData</key>
+    <integer>0</integer>
+    <key>midiMessageType</key>
+    <integer>1</integer>
+    <key>modifier</key>
+    <true/> <!-- This mapping is only active when the modifier is held -->
 </dict>
 ```
 
@@ -194,18 +213,26 @@ This method relies on your controller sending signals on a new channel when its 
 ```xml
 <!-- Primary function (Play/Pause on Channel 0) -->
 <dict>
-    <key>keyPath</key><string>turntable1.playPause</string>
-    <key>midiChannel</key><integer>0</integer>
-    <key>midiData</key><integer>11</integer>
-    <key>midiMessageType</key><integer>1</integer>
+    <key>keyPath</key>
+    <string>turntable1.playPause</string>
+    <key>midiChannel</key>
+    <integer>0</integer>
+    <key>midiData</key>
+    <integer>11</integer>
+    <key>midiMessageType</key>
+    <integer>1</integer>
 </dict>
 
 <!-- Shifted function (Reset Speed on Channel 2) -->
 <dict>
-    <key>keyPath</key><string>turntable1.resetSpeed</string>
-    <key>midiChannel</key><integer>2</integer> <!-- Different channel -->
-    <key>midiData</key><integer>11</integer> <!-- Same note -->
-    <key>midiMessageType</key><integer>1</integer>
+    <key>keyPath</key>
+    <string>turntable1.resetSpeed</string>
+    <key>midiChannel</key>
+    <integer>2</integer> <!-- Different channel -->
+    <key>midiData</key>
+    <integer>11</integer> <!-- Same note -->
+    <key>midiMessageType</key>
+    <integer>1</integer>
 </dict>
 ```
 
@@ -217,15 +244,22 @@ What if you want a fader's input to control an LED strip's output on a different
 <!-- Input: A fader on CC #19, Channel 0. -->
 <!-- Output: A Note On message to Note #12, Channel 11 (e.g., a VU meter). -->
 <dict>
-    <key>keyPath</key><string>mixer.lineVolume1</string>
-    <key>midiChannel</key><integer>0</integer>
-    <key>midiData</key><integer>19</integer>
-    <key>midiMessageType</key><integer>3</integer>
+    <key>keyPath</key>
+    <string>mixer.lineVolume1</string>
+    <key>midiChannel</key>
+    <integer>0</integer>
+    <key>midiData</key>
+    <integer>19</integer>
+    <key>midiMessageType</key>
+    <integer>3</integer>
     <key>output</key>
     <dict>
-        <key>midiChannel</key><integer>11</integer>
-        <key>midiData</key><integer>12</integer>
-        <key>midiMessageType</key><integer>1</integer>
+        <key>midiChannel</key>
+        <integer>11</integer>
+        <key>midiData</key>
+        <integer>12</integer>
+        <key>midiMessageType</key>
+        <integer>1</integer>
     </dict>
 </dict>
 ```

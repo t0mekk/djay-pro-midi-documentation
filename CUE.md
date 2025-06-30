@@ -1,4 +1,3 @@
-
 The function that corresponds to the typical DJ CUE button is:
 
 **`turntable{N}.cuePositionOrJumpConsideringPlayState1`**
