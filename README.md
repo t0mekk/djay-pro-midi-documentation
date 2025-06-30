@@ -301,9 +301,21 @@ djay Pro sends MIDI messages **back** to your controller to provide visual feedb
 
 | Configuration Example | Description |
 |---|---|
-| `<key>output</key><dict><key>midiMinValue</key><real>0</real><key>midiMaxValue</key><real>127</real></dict>` | **Standard On/Off.** This is the most common setup. The LED is OFF at value 0 and fully ON at value 127. |
-| `<key>output</key><dict><key>midiMinValue</key><real>50</real></dict>` | **Custom "On" Value.** The LED is OFF at value 0 and ON at the specified value (e.g., 50). This is useful for controllers with specific brightness levels. |
-| `<key>output</key><dict/>` | **Default Behavior.** An empty dictionary tells djay Pro to use its own default, built-in LED feedback for the function defined in `keyPath`. |
+| 
+```xml
+<key>output</key><dict><key>midiMinValue</key><real>0</real><key>midiMaxValue</key><real>127</real></dict>
+```
+ | **Standard On/Off.** This is the most common setup. The LED is OFF at value 0 and fully ON at value 127. |
+| 
+```xml
+<key>output</key><dict><key>midiMinValue</key><real>50</real></dict>
+```
+ | **Custom "On" Value.** The LED is OFF at value 0 and ON at the specified value (e.g., 50). This is useful for controllers with specific brightness levels. |
+| 
+```xml
+<key>output</key><dict/>
+```
+ | **Default Behavior.** An empty dictionary tells djay Pro to use its own default, built-in LED feedback for the function defined in `keyPath`. |
 
 ### Advanced Output: Decoupled Input & Output
 
@@ -344,7 +356,6 @@ djay Pro uses Apple's Property List (`.plist`) format in XML. The file must have
 ### Root Structure
 
 ```xml
-
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -508,3 +519,17 @@ This method relies on the controller's hardware to send controls on a different 
 
 - **Channel Organization:** For clarity, use separate MIDI channels for each deck and for global controls (e.g., Deck 1 on Ch 0, Deck 2 on Ch 1, Mixer on Ch 15).
 - **Disabling a Control ("No-Op"):** To make a control do nothing, map it to a base-level, non-functional `keyPath` like `application` or `turntable1`. This is useful for disabling a control in a specific layer.
+
+```xml
+<!-- No-op mapping example -->
+<dict>
+    <key>keyPath</key>
+    <string>application</string>
+    <key>midiChannel</key>
+    <integer>0</integer>
+    <key>midiData</key>
+    <integer>99</integer>
+    <key>midiMessageType</key>
+    <integer>1</integer>
+</dict>
+```
