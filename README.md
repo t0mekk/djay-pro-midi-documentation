@@ -21,16 +21,11 @@ The [examples/](examples/) directory contains real-world mapping files for study
 | **Native Instruments Traktor S8** | `Traktor_Kontrol_S8.djayMidiMapping` | Screen controller with display feedback |
 | **Native Instruments Traktor X1 MK2** | `Traktor_Kontrol_X1_MK2.djayMidiMapping` | Compact effects controller mapping |
 
-## CLI Tool
-
-This project includes `djay-midi-terminal.py` — a macOS terminal utility for creating, editing, and validating MIDI mapping files. See the [root README](../README.md) for details.
-
 ## Quick Start
 
 1. **New to MIDI mapping?** Start with [BEGINNER.md](BEGINNER.md) — it walks you through creating your first mapping step by step.
 2. **Looking for a specific function?** Use [MAIN.md](MAIN.md) — the complete keyPath reference with all available actions.
 3. **Want to study real mappings?** Browse the [examples/](examples/) directory to see how experienced users structure their mappings.
-4. **Prefer the command line?** Use `djay-midi-terminal.py` to create and validate mappings from the terminal.
 
 ## Key Concepts at a Glance
 
