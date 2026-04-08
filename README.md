@@ -1,6 +1,6 @@
 # djay Pro MIDI Mapping Documentation
 
-Complete documentation for creating, editing, and understanding MIDI mappings in djay Pro.
+Documentation for creating, editing, and understanding MIDI mappings in djay Pro. (ai generated - needs review)
 
 ## Documentation Structure
 
