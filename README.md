@@ -9,17 +9,6 @@ Complete documentation for creating, editing, and understanding MIDI mappings in
 | [BEGINNER.md](BEGINNER.md) | Step-by-step tutorial from first mapping to advanced techniques | New users |
 | [REFERENCE.md](REFERENCE.md) | Complete reference: all keyPaths, MIDI types, file format | All users |
 
-## Example Mappings
-
-The [examples/](examples/) directory contains real-world mapping files for study and reference:
-
-| Controller | File | Highlights |
-|------------|------|------------|
-| **Allen & Heath XONE:K2** | `XONE_K2_Mapping_V1_By_LaFleurLabs.djayMidiMapping` | 4-deck mapping on single MIDI channel, full mixer, EQ, FX, library |
-| **Pioneer DDJ-REV1** | `Pioneer_DDJ-REV1_Edit_by_ALEXYUS_DJ.djayMidiMapping` | Multi-channel layout, modifier layers, Serato-oriented controller adapted for djay |
-| **Denon MC7000** | `Denon_DJ_MC7000_Edit_1.djayMidiMapping` | Large professional controller with extensive feature coverage |
-| **Native Instruments Traktor S8** | `Traktor_Kontrol_S8.djayMidiMapping` | Screen controller with display feedback |
-| **Native Instruments Traktor X1 MK2** | `Traktor_Kontrol_X1_MK2.djayMidiMapping` | Compact effects controller mapping |
 
 ## Quick Start
 
