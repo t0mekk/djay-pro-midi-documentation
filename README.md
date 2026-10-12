@@ -1,6 +1,7 @@
 # djay Pro MIDI Mapping Documentation
 
-Documentation for creating, editing, and understanding MIDI mappings in djay Pro. (ai generated - needs review)
+[needs review]
+Documentation for creating, editing, and understanding MIDI mappings in djay Pro
 
 ## Documentation Structure
 
@@ -9,12 +10,7 @@ Documentation for creating, editing, and understanding MIDI mappings in djay Pro
 | [BEGINNER.md](BEGINNER.md) | Step-by-step tutorial from first mapping to advanced techniques | New users |
 | [REFERENCE.md](REFERENCE.md) | Complete reference: all keyPaths, MIDI types, file format | All users |
 
-
-## Quick Start
-
-1. **New to MIDI mapping?** Start with [BEGINNER.md](BEGINNER.md) — it walks you through creating your first mapping step by step.
-2. **Looking for a specific function?** Use [MAIN.md](MAIN.md) — the complete keyPath reference with all available actions.
-3. **Want to study real mappings?** Browse the [examples/](examples/) directory to see how experienced users structure their mappings.
+nt to study real mappings?** Browse the [examples/](examples/) directory to see how experienced users structure their mappings.
 
 ## Key Concepts at a Glance
 
