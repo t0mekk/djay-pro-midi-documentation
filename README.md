@@ -10,7 +10,6 @@ Documentation for creating, editing, and understanding MIDI mappings in djay Pro
 | [BEGINNER.md](BEGINNER.md) | Step-by-step tutorial from first mapping to advanced techniques | New users |
 | [REFERENCE.md](REFERENCE.md) | Complete reference: all keyPaths, MIDI types, file format | All users |
 
-nt to study real mappings?** Browse the [examples/](examples/) directory to see how experienced users structure their mappings.
 
 ## Key Concepts at a Glance
 
