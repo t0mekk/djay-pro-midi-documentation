@@ -1,75 +1,90 @@
 # djay Pro MIDI Mapping Documentation
 
-[needs review]
-Documentation for creating, editing, and understanding MIDI mappings in djay Pro
+Unofficial documentation for creating, editing and understanding MIDI mappings in Algoriddim djay Pro, including the `.djayMidiMapping` file format.
 
-## Documentation Structure
+Algoriddim does not document the file format and does not support editing it by hand. This documentation was drafted with AI assistance and then checked against real mapping files and Algoriddim's manual. [REFERENCE.md](REFERENCE.md#sources-and-verification) states what each part is based on and separates verified content from unverified.
+
+## Documents
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [BEGINNER.md](BEGINNER.md) | Step-by-step tutorial from first mapping to advanced techniques | New users |
-| [REFERENCE.md](REFERENCE.md) | Complete reference: all keyPaths, MIDI types, file format | All users |
+| [BEGINNER.md](BEGINNER.md) | From mapping a button in MIDI Learn to editing the file by hand | New users |
+| [REFERENCE.md](REFERENCE.md) | File format, every known key, conditions, and the keyPath list | All users |
+| [examples/](examples/) | Five real mapping files with notes on what each demonstrates | All users |
 
+## The format at a glance
 
-## Key Concepts at a Glance
-
-### File Format
-
-djay Pro uses Apple Property List (XML) format with the `.djayMidiMapping` extension:
+A mapping is an Apple property list in XML with the extension `.djayMidiMapping`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>USBID</key>
-    <integer>586153985</integer>
     <key>controls</key>
     <array>
-        <!-- Individual control entries -->
+        <!-- one <dict> per mapped control -->
     </array>
+    <key>endpointName</key>
+    <string>XONE:K2</string>
+    <key>USBID</key>
+    <integer>586153985</integer>
 </dict>
 </plist>
 ```
 
-### Control Entry Anatomy
+Each control is a dict:
 
 ```xml
 <dict>
     <key>keyPath</key>
-    <string>turntable1.playPause</string>    <!-- What djay does -->
+    <string>turntable1.playPause</string>    <!-- target.action -->
     <key>midiChannel</key>
-    <integer>0</integer>                      <!-- MIDI channel (0-15) -->
+    <integer>0</integer>                      <!-- 0-15; djay's UI shows 1-16 -->
     <key>midiData</key>
-    <integer>11</integer>                     <!-- Note/CC number (0-127) -->
+    <integer>11</integer>                     <!-- note or CC number, 0-127 -->
     <key>midiMessageType</key>
-    <integer>1</integer>                      <!-- 1=Note, 3=CC -->
+    <integer>1</integer>                      <!-- 1 = Note, 3 = Control Change -->
     <key>output</key>
-    <dict/>                                   <!-- LED feedback -->
+    <dict/>                                   <!-- send LED feedback -->
 </dict>
 ```
 
-### MIDI Message Types
+Optional keys change how the control behaves:
 
-| Value | Type | Use For |
-|-------|------|---------|
-| `1` | Note On/Off | Buttons, pads, switches |
-| `3` | Control Change (CC) | Knobs, faders, encoders |
+| Key | Purpose |
+|-----|---------|
+| `controlType` | `button`, `rotary`, `rotary-64`, `rotary-absolute` |
+| `buttonMode` | `toggle` or `hold` |
+| `flipped`, `pickupMode`, `rotarySensitivity`, `rotaryAcceleration` | Invert, pickup mode, encoder speed, jog response |
+| `modifier` | Active only while the Controller Shift Key (`application.modifier`) is held |
+| `condition` | Active only in a given pad mode or deck layer, e.g. `modifier1 == 0` |
+| `output` | LED feedback: values, and optionally a different note, CC or channel |
 
-### Channel Numbering
+## File locations
 
-> djay's UI shows channels 1–16, but mapping files use 0–15. **Subtract 1** from what you see in the MIDI Learn editor.
-
-## File Locations
-
-| Platform | Path |
-|----------|------|
+| Platform | Location |
+|----------|----------|
 | macOS | `~/Music/djay/MIDI Mappings/` |
-| Windows | User profile under djay directory |
-| iOS | Files app → On My iPad/iPhone → djay |
+| Windows | `%HOMEPATH%\Music\djay\MIDI Mappings` |
+| iOS / iPadOS | Files app → On My iPhone/iPad → djay |
 
-## External Resources
+On macOS and Windows, double-clicking a mapping file installs it. Restart djay after editing a file by hand.
 
-- [Algoriddim MIDI Learn Guide](https://help.algoriddim.com/topic/hardware/how-to-map-a-controller)
-- [Community MIDI Actions List](https://community.algoriddim.com/t/list-of-available-midi-actions-in-djay/12165)
-- [Modifiers How-To](https://community.algoriddim.com/t/how-to-work-with-modifiers-in-the-midi-mapping-xml/32183)
+## External resources
+
+Official:
+
+- [How to custom map a controller using MIDI Learn](https://help.algoriddim.com/topic/hardware/how-to-map-a-controller)
+- User manual, MIDI mapping: [Mac](https://help.algoriddim.com/user-manual/djay-pro-mac/midi/mapping), [Windows](https://help.algoriddim.com/user-manual/djay-pro-windows/midi/mapping), [iOS](https://help.algoriddim.com/user-manual/djay-ios/midi/mapping)
+- [Where djay stores its data](https://help.algoriddim.com/topic/using-djay/where-does-djay-store-data)
+
+Community:
+
+- [How to work with modifiers in the MIDI Mapping XML](https://community.algoriddim.com/t/how-to-work-with-modifiers-in-the-midi-mapping-xml/32183)
+- [List of available MIDI actions in djay](https://community.algoriddim.com/t/list-of-available-midi-actions-in-djay/12165), described by their MIDI Learn names
+- [DJ TechTools mapping library](https://maps.djtechtools.com/), with user-made djay mappings
+
+## Contributing
+
+The most useful contribution is a confirmed keyPath. Map an action in MIDI Learn, save, open the file, and report the `keyPath` djay wrote along with your djay version. The [unverified list](REFERENCE.md#unverified-keypaths) is the place to start.
