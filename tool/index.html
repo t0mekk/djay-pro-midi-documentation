@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>djay MIDI Mapper</title>
+<style>
+:root {
+  --bg: #14161a; --panel: #1c1f25; --panel2: #23272f; --line: #343a45;
+  --text: #e6e8ec; --dim: #8b93a1; --accent: #ffb000; --bad: #ff6b5e; --ok: #5fd08a;
+  --d1: #4aa8ff; --d2: #ff8a3d; --d3: #5fd08a; --d4: #c58bff; --dg: #c9ced8;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; display: flex; flex-direction: column; }
+button, input, select { font: inherit; color: inherit; }
+input[type=text], input[type=number], input[type=search], select {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 7px; min-width: 0;
+}
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 10px; cursor: pointer; }
+.btn:hover { border-color: var(--dim); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #1a1300; font-weight: 600; }
+.btn.on { border-color: var(--accent); color: var(--accent); }
+label.f { display: inline-flex; align-items: center; gap: 5px; color: var(--dim); white-space: nowrap; }
+label.f > input[type=text] { width: 130px; color: var(--text); }
+
+header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 14px; margin: 0 6px 0 0; letter-spacing: .04em; }
+header .sp { flex: 1; }
+#midiStatus { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); }
+#midiStatus i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+#midiStatus.ok i { background: var(--ok); }
+#deckOrder input { width: 30px; text-align: center; padding: 3px 2px; }
+
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(400px, auto) minmax(340px, 1fr) 280px; }
+main > section { min-height: 0; overflow: auto; padding: 12px; }
+#mid { border-left: 1px solid var(--line); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 0 0 8px; font-weight: 600; }
+
+/* --- surface --- */
+.layerbar { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+.k2 { width: 392px; background: #0d0e11; border: 1px solid #000; border-radius: 10px; padding: 12px 10px; box-shadow: inset 0 0 0 1px #2a2d34; }
+.k2 .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 6px; }
+.k2 .gap { height: 8px; }
+.ctl { position: relative; background: #1b1e24; border: 1px solid #30353f; border-radius: 6px; color: var(--text); cursor: pointer; padding: 3px 4px; min-height: 30px; width: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; line-height: 1.15; text-align: center; overflow: hidden; }
+.ctl .lbl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctl .id { color: var(--dim); font: 9px var(--mono); }
+.ctl.empty .lbl { color: #555c69; }
+.ctl.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ctl.hit { background: #3a3116; }
+.ctl.other::after { content: ""; position: absolute; top: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.ctl.d1 { border-left: 3px solid var(--d1); } .ctl.d2 { border-left: 3px solid var(--d2); }
+.ctl.d3 { border-left: 3px solid var(--d3); } .ctl.d4 { border-left: 3px solid var(--d4); }
+.ctl.dg { border-left: 3px solid var(--dg); }
+.ctl.pot, .ctl.enc { min-height: 54px; }
+.ctl.fader { min-height: 92px; }
+.glyph { flex: none; }
+.pot .glyph, .enc .glyph { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #5a6170; position: relative; }
+.pot .glyph::after { content: ""; position: absolute; left: 50%; top: 1px; width: 2px; height: 9px; margin-left: -1px; background: var(--text); transform-origin: 50% 10px; transform: rotate(calc(-135deg + var(--v, .5) * 270deg)); }
+.enc .glyph { border-style: dashed; }
+.fader .glyph { width: 6px; height: 56px; border-radius: 3px; background: #30353f; position: relative; }
+.fader .glyph::after { content: ""; position: absolute; left: -7px; width: 20px; height: 8px; border-radius: 2px; background: var(--text); bottom: calc(var(--v, .5) * 48px); }
+.generic { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; width: 392px; }
+.hint { color: var(--dim); font-size: 12px; max-width: 392px; }
+
+/* --- inspector --- */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.ctlhead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.ctlhead b { font-size: 14px; }
+.ctlhead code, .entry code { font: 11px var(--mono); color: var(--dim); }
+.entry { border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; margin-top: 6px; background: var(--panel2); }
+.entry .top { display: flex; gap: 8px; align-items: baseline; }
+.entry .top b { flex: 1; }
+.entry .x { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 15px; padding: 0 4px; }
+.entry .x:hover { color: var(--bad); }
+.opts { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; }
+.opts select, .opts input[type=number] { padding: 2px 5px; }
+.opts input[type=number] { width: 64px; }
+.chip { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 9px; border: 1px solid var(--line); color: var(--dim); }
+.chip.warn { color: var(--accent); border-color: var(--accent); }
+.badge { font: 600 10px var(--mono); padding: 0 5px; border-radius: 3px; color: #111; }
+.badge.d1 { background: var(--d1); } .badge.d2 { background: var(--d2); } .badge.d3 { background: var(--d3); } .badge.d4 { background: var(--d4); } .badge.dg { background: var(--dg); }
+.none { color: var(--dim); padding: 6px 0 0; }
+
+#picker { flex: 1; min-height: 220px; display: flex; flex-direction: column; }
+.pickbar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+.pickbar input[type=search] { flex: 1; min-width: 120px; }
+#actions { flex: 1; overflow: auto; min-height: 0; margin: 0 -4px; }
+#actions h3 { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 10px 4px 3px; font-weight: 600; }
+.act { display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; background: none; border: 0; border-radius: 4px; padding: 3px 4px; cursor: pointer; }
+.act:hover, .act.first { background: var(--panel2); }
+.act .n { flex: none; }
+.act .d { flex: 1; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act .t { color: var(--dim); font: 10px var(--mono); }
+
+/* --- side --- */
+#checks div { padding: 3px 0 3px 16px; position: relative; }
+#checks div::before { content: "●"; position: absolute; left: 0; font-size: 9px; top: 6px; color: var(--ok); }
+#checks div.w::before { color: var(--accent); }
+#monitor { font: 11px/1.5 var(--mono); color: var(--dim); white-space: pre; }
+#monitor b { color: var(--text); font-weight: 400; }
+#drop { position: fixed; inset: 0; background: rgba(20,22,26,.85); display: none; align-items: center; justify-content: center; font-size: 20px; border: 3px dashed var(--accent); z-index: 9; }
+body.drag #drop { display: flex; }
+@media (max-width: 1100px) { main { grid-template-columns: 1fr; } main > section { overflow: visible; } body { height: auto; } #mid { border: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>djay MIDI Mapper</h1>
+  <label class="f">Name <input type="text" id="name" spellcheck="false"></label>
+  <label class="f" title="Must match the device name djay sees (the CoreMIDI port name)">Device <input type="text" id="endpoint" spellcheck="false"></label>
+  <label class="f">Surface
+    <select id="profile"><option value="k2">Xone:K2</option><option value="generic">Learn (Xone:4D / any)</option></select>
+  </label>
+  <label class="f" id="chWrap" title="K2 MIDI channel as shown on the hardware (1-16). The file stores channel - 1.">K2 ch <select id="channel"></select></label>
+  <span class="f" id="deckOrder" title="Which deck each K2 column controls, left to right">Columns → decks
+    <input type="text" maxlength="1"><input type="text" maxlength="1"><input type="text" maxlength="1"><input type="text" maxlength="1">
+  </span>
+  <span class="sp"></span>
+  <span id="midiStatus"><i></i><span>MIDI off</span></span>
+  <button class="btn on" id="follow" title="Touch a control on the hardware to select it here">Follow hardware</button>
+  <button class="btn" id="new">New</button>
+  <button class="btn" id="import">Import…</button>
+  <button class="btn primary" id="export">Export .djayMidiMapping</button>
+  <input type="file" id="file" accept=".djayMidiMapping,.plist,.xml" hidden>
+</header>
+
+<main>
+  <section id="left">
+    <div class="layerbar">
+      <h2 style="margin:0 6px 0 0">Layer</h2>
+      <button class="btn" data-slot="0">Normal</button>
+      <button class="btn" data-slot="1">Shift</button>
+      <span class="chip" id="count"></span>
+    </div>
+    <div id="surface"></div>
+  </section>
+
+  <section id="mid">
+    <div class="card" id="inspector"></div>
+    <div class="card" id="picker">
+      <div class="pickbar">
+        <input type="search" id="q" placeholder="Search actions…  ( / )" spellcheck="false">
+        <label class="f">Deck <select id="deck"><option value="0">Auto</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+        <label class="f" title="Only show actions that suit the selected control type"><input type="checkbox" id="fits" checked> fits control</label>
+        <label class="f" id="rowWrap" title="Assign the same action to this row in all 4 columns, one deck per column"><input type="checkbox" id="rowApply"> all 4 columns</label>
+      </div>
+      <div id="actions"></div>
+    </div>
+  </section>
+
+  <section id="right">
+    <h2>Checks</h2>
+    <div id="checks"></div>
+    <h2 style="margin-top:16px">MIDI monitor</h2>
+    <div id="monitor">Move a control…</div>
+  </section>
+</main>
+<div id="drop">Drop a .djayMidiMapping file to import</div>
+
+<script>
+'use strict';
+// Catalog is injected by build-actions.mjs from REFERENCE.md.
+const ACTIONS = /*ACTIONS-START*/[{"k":"turntable{N}.playPause","n":"Play/Pause","g":"Playback Control","d":"Toggle playback on deck N","led":1,"t":"button"},{"k":"turntable{N}.speed","n":"Speed Control","g":"Playback Control","d":"Adjust playback speed (absolute)","led":0,"t":"knob"},{"k":"turntable{N}.speedPlus","n":"Speed Plus","g":"Playback Control","d":"Increase speed momentarily","led":0,"t":"button"},{"k":"turntable{N}.speedMinus","n":"Speed Minus","g":"Playback Control","d":"Decrease speed momentarily","led":0,"t":"button"},{"k":"turntable{N}.speedRelative","n":"Speed Relative","g":"Playback Control","d":"Relative speed adjustment","led":0,"t":"encoder"},{"k":"turntable{N}.resetSpeed","n":"Reset Speed","g":"Playback Control","d":"Reset to normal speed","led":0,"t":"button"},{"k":"turntable{N}.reverse","n":"Reverse","g":"Playback Control","d":"Per-deck reverse playback toggle","led":1,"t":"button"},{"k":"turntable{N}.seekForward","n":"Seek Forward","g":"Playback Control","d":"Seek forward in the track","led":0,"t":"button"},{"k":"turntable{N}.seekBackward","n":"Seek Backward","g":"Playback Control","d":"Seek backward in the track","led":0,"t":"button"},{"k":"turntable{N}.loadNextTrack","n":"Load Next Track","g":"Playback Control","d":"Load the next track from the current playlist","led":0,"t":"button"},{"k":"turntable{N}.loadPreviousTrack","n":"Load Previous Track","g":"Playback Control","d":"Load the previous track from the current playlist","led":0,"t":"button"},{"k":"turntable{N}.loadTrack","n":"Load Track","g":"Playback Control","d":"Load selected track to deck N","led":0,"t":"button"},{"k":"turntable{N}.backspin","n":"Backspin","g":"Playback Control","d":"Triggers a backspin effect","led":1,"t":"button"},{"k":"turntable{N}.brakeTransitionEffect","n":"Brake Effect","g":"Playback Control","d":"Triggers a brake/vinyl stop effect","led":1,"t":"button"},{"k":"turntable{N}.gotoBeginning","n":"Go to Beginning","g":"Playback Control","d":"Jump to track beginning","led":0,"t":"button"},{"k":"turntable{N}.gotoBeginningAndPause","n":"Go to Beginning and Pause","g":"Playback Control","d":"Jump to track beginning and pause","led":0,"t":"button"},{"k":"turntable{N}.gotoBeginningAndPlay","n":"Go to Beginning and Play","g":"Playback Control","d":"Jump to track beginning and play","led":0,"t":"button"},{"k":"turntable{N}.gotoZero","n":"Go to Zero","g":"Playback Control","d":"Jump to track beginning","led":0,"t":"button"},{"k":"turntable{N}.censor","n":"Censor","g":"Playback Control","d":"Censor/bleep effect (plays reversed while held)","led":1,"t":"button"},{"k":"turntable{N}.pitch","n":"Pitch","g":"Pitch Control","d":"Pitch fader control","led":0,"t":"knob"},{"k":"turntable{N}.pitchBendPlus","n":"Pitch Bend Plus","g":"Pitch Control","d":"Temporary pitch increase (button)","led":0,"t":"button"},{"k":"turntable{N}.pitchBendMinus","n":"Pitch Bend Minus","g":"Pitch Control","d":"Temporary pitch decrease (button)","led":0,"t":"button"},{"k":"turntable{N}.pitchBendMove","n":"Pitch Bend Move","g":"Pitch Control","d":"Continuous pitch bend (rotary/jog)","led":0,"t":"encoder"},{"k":"turntable{N}.resetPitch","n":"Reset Pitch","g":"Pitch Control","d":"Reset pitch to zero","led":0,"t":"button"},{"k":"turntable{N}.pitchOnOff","n":"Pitch On/Off","g":"Pitch Control","d":"Enable/disable pitch fader","led":1,"t":"button"},{"k":"turntable{N}.bpmSync","n":"BPM Sync","g":"Sync & BPM","d":"Sync to master tempo","led":1,"t":"button"},{"k":"turntable{N}.turntableIsSyncMaster","n":"Sync Master","g":"Sync & BPM","d":"Set as sync master","led":1,"t":"button"},{"k":"turntable{N}.toggleQuantize","n":"Toggle Quantize","g":"Sync & BPM","d":"Enable/disable quantization","led":1,"t":"button"},{"k":"turntable{N}.gain","n":"Gain","g":"Audio Processing","d":"Track gain control","led":0,"t":"knob"},{"k":"turntable{N}.resetGain","n":"Reset Gain","g":"Audio Processing","d":"Reset gain to default","led":0,"t":"button"},{"k":"turntable{N}.highEQ","n":"High EQ","g":"Audio Processing","d":"High frequency EQ","led":0,"t":"knob"},{"k":"turntable{N}.midEQ","n":"Mid EQ","g":"Audio Processing","d":"Mid frequency EQ","led":0,"t":"knob"},{"k":"turntable{N}.lowEQ","n":"Low EQ","g":"Audio Processing","d":"Low frequency EQ","led":0,"t":"knob"},{"k":"turntable{N}.filter","n":"Filter","g":"Audio Processing","d":"Low/high pass filter","led":0,"t":"knob"},{"k":"turntable{N}.resetFilter","n":"Reset Filter","g":"Audio Processing","d":"Reset filter to center","led":0,"t":"button"},{"k":"turntable{N}.key","n":"Key Lock","g":"Audio Processing","d":"Key lock on/off","led":1,"t":"button"},{"k":"turntable{N}.matchKey","n":"Match Key","g":"Audio Processing","d":"Match key to another deck","led":1,"t":"button"},{"k":"turntable{N}.skipForward","n":"Skip Forward","g":"Beat Skipping","d":"Skip forward by current duration","led":0,"t":"button"},{"k":"turntable{N}.skipBackward","n":"Skip Backward","g":"Beat Skipping","d":"Skip backward by current duration","led":0,"t":"button"},{"k":"turntable{N}.skipForward0125Beats","n":"Skip Forward 1/8 Beat","g":"Beat Skipping","d":"Skip forward 1/8 beat","led":0,"t":"button"},{"k":"turntable{N}.skipForward025Beats","n":"Skip Forward 1/4 Beat","g":"Beat Skipping","d":"Skip forward 1/4 beat","led":0,"t":"button"},{"k":"turntable{N}.skipForward05Beats","n":"Skip Forward 1/2 Beat","g":"Beat Skipping","d":"Skip forward 1/2 beat","led":0,"t":"button"},{"k":"turntable{N}.skipForward1Beat","n":"Skip Forward 1 Beat","g":"Beat Skipping","d":"Skip forward 1 beat","led":0,"t":"button"},{"k":"turntable{N}.skipForward2Beats","n":"Skip Forward 2 Beats","g":"Beat Skipping","d":"Skip forward 2 beats","led":0,"t":"button"},{"k":"turntable{N}.skipForward4Beats","n":"Skip Forward 4 Beats","g":"Beat Skipping","d":"Skip forward 4 beats","led":0,"t":"button"},{"k":"turntable{N}.skipBackward0125Beats","n":"Skip Backward 1/8 Beat","g":"Beat Skipping","d":"Skip backward 1/8 beat","led":0,"t":"button"},{"k":"turntable{N}.skipBackward025Beats","n":"Skip Backward 1/4 Beat","g":"Beat Skipping","d":"Skip backward 1/4 beat","led":0,"t":"button"},{"k":"turntable{N}.skipBackward05Beats","n":"Skip Backward 1/2 Beat","g":"Beat Skipping","d":"Skip backward 1/2 beat","led":0,"t":"button"},{"k":"turntable{N}.skipBackward1Beat","n":"Skip Backward 1 Beat","g":"Beat Skipping","d":"Skip backward 1 beat","led":0,"t":"button"},{"k":"turntable{N}.skipBackward2Beats","n":"Skip Backward 2 Beats","g":"Beat Skipping","d":"Skip backward 2 beats","led":0,"t":"button"},{"k":"turntable{N}.skipBackward4Beats","n":"Skip Backward 4 Beats","g":"Beat Skipping","d":"Skip backward 4 beats","led":0,"t":"button"},{"k":"turntable{N}.skipDurationRotary","n":"Skip Duration Rotary","g":"Beat Skipping","d":"Adjust skip duration (rotary)","led":0,"t":"encoder"},{"k":"turntable{N}.skipDurationUp","n":"Skip Duration Up","g":"Beat Skipping","d":"Increase skip duration","led":0,"t":"button"},{"k":"turntable{N}.skipDurationDown","n":"Skip Duration Down","g":"Beat Skipping","d":"Decrease skip duration","led":0,"t":"button"},{"k":"turntable{N}.skipRotary","n":"Skip Rotary","g":"Beat Skipping","d":"Track skip control (rotary)","led":0,"t":"encoder"},{"k":"turntable{N}.cuePosition1","n":"Cue Position 1","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePosition2","n":"Cue Position 2","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePosition3","n":"Cue Position 3","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePosition4","n":"Cue Position 4","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePosition5","n":"Cue Position 5","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePosition6","n":"Cue Position 6","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePosition7","n":"Cue Position 7","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePosition8","n":"Cue Position 8","g":"Cue Points","d":"Jump to cue point N","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState1","n":"Cue Position or Jump (Play State) 1","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState2","n":"Cue Position or Jump (Play State) 2","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState3","n":"Cue Position or Jump (Play State) 3","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState4","n":"Cue Position or Jump (Play State) 4","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState5","n":"Cue Position or Jump (Play State) 5","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState6","n":"Cue Position or Jump (Play State) 6","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState7","n":"Cue Position or Jump (Play State) 7","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cuePositionOrJumpConsideringPlayState8","n":"Cue Position or Jump (Play State) 8","g":"Cue Points","d":"Set/jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet1","n":"Cue or Jump if Already Set 1","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet2","n":"Cue or Jump if Already Set 2","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet3","n":"Cue or Jump if Already Set 3","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet4","n":"Cue or Jump if Already Set 4","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet5","n":"Cue or Jump if Already Set 5","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet6","n":"Cue or Jump if Already Set 6","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet7","n":"Cue or Jump if Already Set 7","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySet8","n":"Cue or Jump if Already Set 8","g":"Cue Points","d":"Set/jump to cue point","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop1","n":"Cue or Jump and Autoloop 1","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop2","n":"Cue or Jump and Autoloop 2","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop3","n":"Cue or Jump and Autoloop 3","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop4","n":"Cue or Jump and Autoloop 4","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop5","n":"Cue or Jump and Autoloop 5","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop6","n":"Cue or Jump and Autoloop 6","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop7","n":"Cue or Jump and Autoloop 7","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndAutoloop8","n":"Cue or Jump and Autoloop 8","g":"Cue Points","d":"Set/jump to cue point and activate autoloop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop1","n":"Cue or Jump and Reloop 1","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop2","n":"Cue or Jump and Reloop 2","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop3","n":"Cue or Jump and Reloop 3","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop4","n":"Cue or Jump and Reloop 4","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop5","n":"Cue or Jump and Reloop 5","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop6","n":"Cue or Jump and Reloop 6","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop7","n":"Cue or Jump and Reloop 7","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.cueOrJumpIfAlreadySetAndReloop8","n":"Cue or Jump and Reloop 8","g":"Cue Points","d":"Set/jump to cue point and reactivate loop","led":1,"t":"button"},{"k":"turntable{N}.jumpToCueConsideringPlayState1","n":"Jump to Cue (Play State) 1","g":"Cue Points","d":"Jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.jumpToCueConsideringPlayState2","n":"Jump to Cue (Play State) 2","g":"Cue Points","d":"Jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.jumpToCueConsideringPlayState3","n":"Jump to Cue (Play State) 3","g":"Cue Points","d":"Jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.jumpToCueConsideringPlayState4","n":"Jump to Cue (Play State) 4","g":"Cue Points","d":"Jump to cue point considering play state","led":1,"t":"button"},{"k":"turntable{N}.clearCuePoint1","n":"Clear Cue 1","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearCuePoint2","n":"Clear Cue 2","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearCuePoint3","n":"Clear Cue 3","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearCuePoint4","n":"Clear Cue 4","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearCuePoint5","n":"Clear Cue 5","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearCuePoint6","n":"Clear Cue 6","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearCuePoint7","n":"Clear Cue 7","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearCuePoint8","n":"Clear Cue 8","g":"Cue Points","d":"Clear a specific cue point","led":0,"t":"button"},{"k":"turntable{N}.clearStartPoint","n":"Clear Start Point","g":"Cue Points","d":"Clear start point","led":0,"t":"button"},{"k":"turntable{N}.clearEndPoint","n":"Clear End Point","g":"Cue Points","d":"Clear end point","led":0,"t":"button"},{"k":"turntable{N}.resetCuePoints","n":"Reset Cue Points","g":"Cue Points","d":"Clear all cue points","led":0,"t":"button"},{"k":"turntable{N}.loopIn","n":"Loop In","g":"Loop Control","d":"Set loop in point","led":1,"t":"button"},{"k":"turntable{N}.loopOut","n":"Loop Out","g":"Loop Control","d":"Set loop out point","led":1,"t":"button"},{"k":"turntable{N}.loopOutAndReloopOrUnloop","n":"Loop Out and Reloop","g":"Loop Control","d":"Context-aware: Sets loop out, or reactivates/deactivates existing loop","led":1,"t":"button"},{"k":"turntable{N}.loopingActive","n":"Loop Active","g":"Loop Control","d":"Toggle loop on/off","led":1,"t":"button"},{"k":"turntable{N}.loopingActiveAndReloopWhenOff","n":"Loop Active and Reloop","g":"Loop Control","d":"Toggle loop, reactivate when off","led":1,"t":"button"},{"k":"turntable{N}.reloop","n":"Reloop","g":"Loop Control","d":"Reactivate last loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoopOnOff","n":"Auto Loop On/Off","g":"Loop Control","d":"Toggle auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoopDurationRotary","n":"Auto Loop Duration","g":"Loop Control","d":"Adjust loop length (rotary)","led":0,"t":"encoder"},{"k":"turntable{N}.autoLoopDurationHalf","n":"Auto Loop Halve","g":"Loop Control","d":"Halve current auto loop length (button)","led":1,"t":"button"},{"k":"turntable{N}.autoLoopDurationDouble","n":"Auto Loop Double","g":"Loop Control","d":"Double current auto loop length (button)","led":1,"t":"button"},{"k":"turntable{N}.autoLoop0125BeatInterval","n":"1/8 Beat Loop","g":"Fixed Loop Intervals","d":"1/8 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoop025BeatInterval","n":"1/4 Beat Loop","g":"Fixed Loop Intervals","d":"1/4 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoop05BeatInterval","n":"1/2 Beat Loop","g":"Fixed Loop Intervals","d":"1/2 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoop1BeatInterval","n":"1 Beat Loop","g":"Fixed Loop Intervals","d":"1 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoop2BeatInterval","n":"2 Beat Loop","g":"Fixed Loop Intervals","d":"2 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoop4BeatInterval","n":"4 Beat Loop","g":"Fixed Loop Intervals","d":"4 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoop8BeatInterval","n":"8 Beat Loop","g":"Fixed Loop Intervals","d":"8 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.autoLoop16BeatInterval","n":"16 Beat Loop","g":"Fixed Loop Intervals","d":"16 beat auto loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop00625BeatInterval","n":"Bounce 1/64","g":"Bounce Loop","d":"1/64 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop0125BeatInterval","n":"Bounce 1/32","g":"Bounce Loop","d":"1/32 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop025BeatInterval","n":"Bounce 1/16","g":"Bounce Loop","d":"1/16 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop05BeatInterval","n":"Bounce 1/8","g":"Bounce Loop","d":"1/8 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop1BeatInterval","n":"Bounce 1/4","g":"Bounce Loop","d":"1/4 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop2BeatInterval","n":"Bounce 1/2","g":"Bounce Loop","d":"1/2 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop4BeatInterval","n":"Bounce 1 Beat","g":"Bounce Loop","d":"1 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop8BeatInterval","n":"Bounce 2 Beats","g":"Bounce Loop","d":"2 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoop16BeatInterval","n":"Bounce 4 Beats","g":"Bounce Loop","d":"4 beat bounce loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoopDrums025BeatInterval","n":"Bounce Drums 1/4","g":"Bounce Loop Drums","d":"1/4 beat bounce drums loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoopDrums05BeatInterval","n":"Bounce Drums 1/2","g":"Bounce Loop Drums","d":"1/2 beat bounce drums loop","led":1,"t":"button"},{"k":"turntable{N}.bounceLoopDrums1BeatInterval","n":"Bounce Drums 1 Beat","g":"Bounce Loop Drums","d":"1 beat bounce drums loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate1","n":"Save Loop or Activate 1","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate2","n":"Save Loop or Activate 2","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate3","n":"Save Loop or Activate 3","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate4","n":"Save Loop or Activate 4","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate5","n":"Save Loop or Activate 5","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate6","n":"Save Loop or Activate 6","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate7","n":"Save Loop or Activate 7","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrActivate8","n":"Save Loop or Activate 8","g":"Save Loop","d":"Save current loop to pad, or activate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop1","n":"Save Loop or Reloop 1","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop2","n":"Save Loop or Reloop 2","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop3","n":"Save Loop or Reloop 3","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop4","n":"Save Loop or Reloop 4","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop5","n":"Save Loop or Reloop 5","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop6","n":"Save Loop or Reloop 6","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop7","n":"Save Loop or Reloop 7","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.saveLoopIfLoopingOrReloop8","n":"Save Loop or Reloop 8","g":"Save Loop","d":"Save current loop to pad, or reactivate saved loop","led":1,"t":"button"},{"k":"turntable{N}.scratchingMode","n":"Scratching Mode","g":"Scratching & Jog","d":"Enable scratch mode","led":1,"t":"button"},{"k":"turntable{N}.scratchingMove","n":"Scratching Move","g":"Scratching & Jog","d":"Scratch wheel input","led":0,"t":"encoder"},{"k":"turntable{N}.jogSeekMove","n":"Jog Seek Move","g":"Scratching & Jog","d":"Jog wheel movement for seeking","led":0,"t":"encoder"},{"k":"turntable{N}.jogSeekModeToggle","n":"Jog Seek Mode Toggle","g":"Scratching & Jog","d":"Toggle jog mode (seek vs. pitch bend)","led":1,"t":"button"},{"k":"turntable{N}.jogPitchBendModeToggle","n":"Jog Pitch Bend Mode Toggle","g":"Scratching & Jog","d":"Toggle jog pitch bend mode","led":1,"t":"button"},{"k":"turntable{N}.scrubbing","n":"Scrubbing","g":"Scratching & Jog","d":"High-speed track search","led":0,"t":"encoder"},{"k":"turntable{N}.deckSlipToggle","n":"Deck Slip Toggle","g":"Scratching & Jog","d":"Enable slip mode","led":1,"t":"button"},{"k":"turntable{N}.fxActive","n":"FX Active","g":"Effect Control","d":"Master FX on/off for a deck","led":1,"t":"button"},{"k":"turntable{N}.fx1Enabled","n":"FX 1 Enabled","g":"Effect Control","d":"Effect slot 1 on/off","led":1,"t":"button"},{"k":"turntable{N}.fx2Enabled","n":"FX 2 Enabled","g":"Effect Control","d":"Effect slot 2 on/off","led":1,"t":"button"},{"k":"turntable{N}.fx3Enabled","n":"FX 3 Enabled","g":"Effect Control","d":"Effect slot 3 on/off","led":1,"t":"button"},{"k":"turntable{N}.fx1SelectNext","n":"FX 1 Select Next","g":"Effect Control","d":"Cycle to next effect in slot 1","led":0,"t":"button"},{"k":"turntable{N}.fx2SelectNext","n":"FX 2 Select Next","g":"Effect Control","d":"Cycle to next effect in slot 2","led":0,"t":"button"},{"k":"turntable{N}.fx3SelectNext","n":"FX 3 Select Next","g":"Effect Control","d":"Cycle to next effect in slot 3","led":0,"t":"button"},{"k":"turntable{N}.fx1WetDryValue","n":"FX 1 Wet/Dry","g":"Effect Parameters","d":"Effect mix amount","led":0,"t":"knob"},{"k":"turntable{N}.fx2WetDryValue","n":"FX 2 Wet/Dry","g":"Effect Parameters","d":"Effect mix amount","led":0,"t":"knob"},{"k":"turntable{N}.fx3WetDryValue","n":"FX 3 Wet/Dry","g":"Effect Parameters","d":"Effect mix amount","led":0,"t":"knob"},{"k":"turntable{N}.fx1ParameterValue","n":"FX 1 Parameter","g":"Effect Parameters","d":"Effect parameter","led":0,"t":"knob"},{"k":"turntable{N}.fx2ParameterValue","n":"FX 2 Parameter","g":"Effect Parameters","d":"Effect parameter","led":0,"t":"knob"},{"k":"turntable{N}.fx3ParameterValue","n":"FX 3 Parameter","g":"Effect Parameters","d":"Effect parameter","led":0,"t":"knob"},{"k":"turntable{N}.fx1ParameterValueMinus","n":"FX 1 Parameter Minus","g":"Effect Parameters","d":"Decrease effect parameter","led":0,"t":"button"},{"k":"turntable{N}.fx2ParameterValueMinus","n":"FX 2 Parameter Minus","g":"Effect Parameters","d":"Decrease effect parameter","led":0,"t":"button"},{"k":"turntable{N}.fx3ParameterValueMinus","n":"FX 3 Parameter Minus","g":"Effect Parameters","d":"Decrease effect parameter","led":0,"t":"button"},{"k":"turntable{N}.fx1ParameterValuePlus","n":"FX 1 Parameter Plus","g":"Effect Parameters","d":"Increase effect parameter","led":0,"t":"button"},{"k":"turntable{N}.fx2ParameterValuePlus","n":"FX 2 Parameter Plus","g":"Effect Parameters","d":"Increase effect parameter","led":0,"t":"button"},{"k":"turntable{N}.fx3ParameterValuePlus","n":"FX 3 Parameter Plus","g":"Effect Parameters","d":"Increase effect parameter","led":0,"t":"button"},{"k":"turntable{N}.instantFx1","n":"Instant FX 1","g":"Instant Effects","d":"Trigger instant effect","led":1,"t":"button"},{"k":"turntable{N}.instantFx2","n":"Instant FX 2","g":"Instant Effects","d":"Trigger instant effect","led":1,"t":"button"},{"k":"turntable{N}.instantFx3","n":"Instant FX 3","g":"Instant Effects","d":"Trigger instant effect","led":1,"t":"button"},{"k":"turntable{N}.instantFx4","n":"Instant FX 4","g":"Instant Effects","d":"Trigger instant effect 4","led":1,"t":"button"},{"k":"turntable{N}.instantFx5","n":"Instant FX 5","g":"Instant Effects","d":"Trigger instant effect 5","led":1,"t":"button"},{"k":"turntable{N}.instantFx6","n":"Instant FX 6","g":"Instant Effects","d":"Trigger instant effect 6","led":1,"t":"button"},{"k":"turntable{N}.instantFx7","n":"Instant FX 7","g":"Instant Effects","d":"Trigger instant effect 7","led":1,"t":"button"},{"k":"turntable{N}.instantFx8","n":"Instant FX 8","g":"Instant Effects","d":"Trigger instant effect 8","led":1,"t":"button"},{"k":"turntable{N}.fxBounceBitCrusher","n":"Bounce Bit Crusher","g":"Bounce Effects","d":"Bounce bit crusher","led":1,"t":"button"},{"k":"turntable{N}.fxBounceEchoCensor","n":"Bounce Echo Censor","g":"Bounce Effects","d":"Bounce echo censor","led":1,"t":"button"},{"k":"turntable{N}.fxBounceEchoExtreme","n":"Bounce Echo Extreme","g":"Bounce Effects","d":"Bounce echo extreme","led":1,"t":"button"},{"k":"turntable{N}.fxBounceLowPassEcho","n":"Bounce Low Pass Echo","g":"Bounce Effects","d":"Bounce low pass echo","led":1,"t":"button"},{"k":"turntable{N}.fxBounceHighPassEcho","n":"Bounce High Pass Echo","g":"Bounce Effects","d":"Bounce high pass echo","led":1,"t":"button"},{"k":"turntable{N}.fxBounceFlanger","n":"Bounce Flanger","g":"Bounce Effects","d":"Bounce flanger","led":1,"t":"button"},{"k":"turntable{N}.fxBounceLowPass","n":"Bounce Low Pass","g":"Bounce Effects","d":"Bounce low pass filter","led":1,"t":"button"},{"k":"turntable{N}.fxBounceHighPass","n":"Bounce High Pass","g":"Bounce Effects","d":"Bounce high pass filter","led":1,"t":"button"},{"k":"mixer.lineVolume1","n":"Line Volume 1","g":"Channel Volume & Monitoring","d":"Channel volume fader","led":0,"t":"knob"},{"k":"mixer.lineVolume2","n":"Line Volume 2","g":"Channel Volume & Monitoring","d":"Channel volume fader","led":0,"t":"knob"},{"k":"mixer.lineVolume3","n":"Line Volume 3","g":"Channel Volume & Monitoring","d":"Channel volume fader","led":0,"t":"knob"},{"k":"mixer.lineVolume4","n":"Line Volume 4","g":"Channel Volume & Monitoring","d":"Channel volume fader","led":0,"t":"knob"},{"k":"mixer.crossfade","n":"Crossfader","g":"Channel Volume & Monitoring","d":"Crossfader position","led":0,"t":"knob"},{"k":"mixer.crossfadeStyle","n":"Crossfade Style","g":"Channel Volume & Monitoring","d":"Crossfader curve style","led":0,"t":"button"},{"k":"mixer.masterLevel","n":"Master Level","g":"Channel Volume & Monitoring","d":"Master output level","led":0,"t":"knob"},{"k":"mixer.monitorActive1","n":"Monitor 1","g":"Channel Volume & Monitoring","d":"Cue channel button","led":1,"t":"button"},{"k":"mixer.monitorActive2","n":"Monitor 2","g":"Channel Volume & Monitoring","d":"Cue channel button","led":1,"t":"button"},{"k":"mixer.monitorActive3","n":"Monitor 3","g":"Channel Volume & Monitoring","d":"Cue channel button","led":1,"t":"button"},{"k":"mixer.monitorActive4","n":"Monitor 4","g":"Channel Volume & Monitoring","d":"Cue channel button","led":1,"t":"button"},{"k":"mixer.monitorMix","n":"Monitor Mix","g":"Channel Volume & Monitoring","d":"Cue/main mix balance","led":0,"t":"knob"},{"k":"mixer.monitorMixToMiddle","n":"Monitor Mix to Middle","g":"Channel Volume & Monitoring","d":"Center monitor mix","led":0,"t":"button"},{"k":"mixer.monitorLevel","n":"Monitor Level","g":"Channel Volume & Monitoring","d":"Headphone volume level","led":0,"t":"knob"},{"k":"mixer.monitorLevelMuteOnOff","n":"Monitor Mute","g":"Channel Volume & Monitoring","d":"Mute/unmute headphone output","led":1,"t":"button"},{"k":"mixer.transitionLeft","n":"Transition Left","g":"Transitions","d":"Trigger transition to left deck","led":1,"t":"button"},{"k":"mixer.transitionRight","n":"Transition Right","g":"Transitions","d":"Trigger transition to right deck","led":1,"t":"button"},{"k":"mixer.transitionTypeStandard","n":"Transition Type: Standard","g":"Transitions","d":"Set transition type to standard crossfade","led":1,"t":"button"},{"k":"mixer.transitionTypeBrake","n":"Transition Type: Brake","g":"Transitions","d":"Set transition type to brake effect","led":1,"t":"button"},{"k":"mixer.transitionTypeEcho","n":"Transition Type: Echo","g":"Transitions","d":"Set transition type to echo out","led":1,"t":"button"},{"k":"mixer.videoCrossfade","n":"Video Crossfade","g":"Transitions","d":"Video crossfader position","led":0,"t":"knob"},{"k":"musicLibrary.libraryRotary","n":"Library Rotary","g":"Library","d":"Browse library","led":0,"t":"encoder"},{"k":"musicLibrary.sectionRotary","n":"Section Rotary","g":"Library","d":"Browse library sections","led":0,"t":"encoder"},{"k":"musicLibrary.libraryDown","n":"Library Down","g":"Library","d":"Navigate down in library","led":0,"t":"button"},{"k":"musicLibrary.libraryBack","n":"Library Back","g":"Library","d":"Go back in library hierarchy","led":0,"t":"button"},{"k":"musicLibrary.load1","n":"Load to Deck 1","g":"Library","d":"Load selected track to a specific deck","led":0,"t":"button"},{"k":"musicLibrary.load2","n":"Load to Deck 2","g":"Library","d":"Load selected track to a specific deck","led":0,"t":"button"},{"k":"musicLibrary.load3","n":"Load to Deck 3","g":"Library","d":"Load selected track to a specific deck","led":0,"t":"button"},{"k":"musicLibrary.load4","n":"Load to Deck 4","g":"Library","d":"Load selected track to a specific deck","led":0,"t":"button"},{"k":"musicLibrary.loadSelection","n":"Load Selection","g":"Library","d":"Load selected track to active/next deck","led":0,"t":"button"},{"k":"musicLibrary.toggleLibrarySource","n":"Toggle Source","g":"Library","d":"Switch library source (e.g., Local, Streaming)","led":1,"t":"button"},{"k":"musicLibrary.toggleLibraryVisible","n":"Toggle Library Visible","g":"Library","d":"Show/hide library","led":1,"t":"button"},{"k":"musicLibrary.togglePreview","n":"Toggle Preview","g":"Library","d":"Toggle track preview","led":1,"t":"button"},{"k":"musicLibrary.focusSources","n":"Focus Sources","g":"Library","d":"Focus UI on source panel","led":0,"t":"button"},{"k":"musicLibrary.focusTracks","n":"Focus Tracks","g":"Library","d":"Focus UI on track list panel","led":0,"t":"button"},{"k":"musicLibrary.focusQueue","n":"Focus Queue","g":"Library","d":"Focus UI on queue panel","led":0,"t":"button"},{"k":"musicLibrary.markUnmarkSelectedSongs","n":"Mark/Unmark Songs","g":"Library","d":"Prepare songs for a session/playlist","led":0,"t":"button"},{"k":"musicLibrary.unmarkSelectedSongs","n":"Unmark Songs","g":"Library","d":"Clear all selections","led":0,"t":"button"},{"k":"musicLibrary.previewTrack","n":"Preview Track","g":"Library","d":"Preview selected track","led":1,"t":"button"},{"k":"musicLibrary.autoMixToggle","n":"Auto-Mix Toggle","g":"Library","d":"Enable auto-mix mode","led":1,"t":"button"},{"k":"turntable{N}.downBeat","n":"Down Beat","g":"Beatgrid & Analysis","d":"Mark down beat","led":0,"t":"button"},{"k":"turntable{N}.bpmAndDownBeatRestoreAnalyzed","n":"BPM Restore","g":"Beatgrid & Analysis","d":"Restore analyzed BPM","led":0,"t":"button"},{"k":"turntable{N}.beatGridEdit","n":"Beat Grid Edit","g":"Beatgrid & Analysis","d":"Enter beat grid edit mode","led":1,"t":"button"},{"k":"turntable{N}.beatGridLock","n":"Beat Grid Lock","g":"Beatgrid & Analysis","d":"Lock beat grid","led":1,"t":"button"},{"k":"turntable{N}.beatGridShiftLeft","n":"Beat Grid Shift Left","g":"Beatgrid & Analysis","d":"Shift grid","led":0,"t":"button"},{"k":"turntable{N}.beatGridShiftRight","n":"Right","g":"Beatgrid & Analysis","d":"Shift grid","led":0,"t":"button"},{"k":"turntable{N}.beatGridDouble","n":"Beat Grid Double","g":"Beatgrid & Analysis","d":"Double/halve grid density","led":0,"t":"button"},{"k":"turntable{N}.beatGridHalve","n":"Halve","g":"Beatgrid & Analysis","d":"Double/halve grid density","led":0,"t":"button"},{"k":"turntable{N}.beatGridReset","n":"Beat Grid Reset","g":"Beatgrid & Analysis","d":"Reset beat grid to analysis","led":0,"t":"button"},{"k":"turntable{N}.bpmTap","n":"Manual BPM Tap","g":"Beatgrid & Analysis","d":"Tap to set BPM","led":0,"t":"button"},{"k":"turntable{N}.tempoRangeToggle","n":"Tempo Range Toggle","g":"Beatgrid & Analysis","d":"Switch tempo range (±8%, ±16%, ±50%)","led":1,"t":"button"},{"k":"turntable{N}.reAnalyzeTrack","n":"Re-analyze Track","g":"Beatgrid & Analysis","d":"Re-run track analysis","led":0,"t":"button"},{"k":"turntable{N}.shiftDownBeatLeft","n":"Shift Down Beat Left","g":"Beatgrid & Analysis","d":"Shift downbeat left","led":0,"t":"button"},{"k":"turntable{N}.shiftDownBeatRight","n":"Shift Down Beat Right","g":"Beatgrid & Analysis","d":"Shift downbeat right","led":0,"t":"button"},{"k":"application.modifier","n":"Modifier","g":"Application","d":"Shift/modifier key","led":1,"t":"button"},{"k":"application.reverse","n":"Global Reverse","g":"Application","d":"Global reverse (for all decks)","led":0,"t":"button"},{"k":"application.gain","n":"Global Gain","g":"Application","d":"Global gain/filter control","led":0,"t":"knob"},{"k":"application.filter","n":"Filter","g":"Application","d":"Global gain/filter control","led":0,"t":"knob"},{"k":"application.automix","n":"Automix","g":"Application","d":"Toggle automix mode on/off","led":1,"t":"button"},{"k":"application.recordToggle","n":"Record Toggle","g":"Application","d":"Start/stop recording","led":1,"t":"button"},{"k":"application.showPreferences","n":"Preferences","g":"Application","d":"Open preferences","led":0,"t":"button"},{"k":"application.toggleLibrary","n":"Show/Hide Library","g":"Application","d":"Toggle library visibility","led":1,"t":"button"},{"k":"application.toggleSampler","n":"Show/Hide Sampler","g":"Application","d":"Toggle sampler panel","led":1,"t":"button"},{"k":"application.undo","n":"Undo","g":"Application","d":"Undo/redo last action","led":0,"t":"button"},{"k":"application.redo","n":"Redo","g":"Application","d":"Undo/redo last action","led":0,"t":"button"},{"k":"application.stopDelay","n":"Stop Delay","g":"Application","d":"Delay before stopping playback","led":0,"t":"knob"},{"k":"application.tempoSliderRangeNext","n":"Tempo Slider Range Next","g":"Application","d":"Cycle tempo slider range","led":0,"t":"button"},{"k":"application.tempoSliderRangePlus","n":"Tempo Slider Range Plus","g":"Application","d":"Increase tempo slider range","led":0,"t":"button"},{"k":"application.tempoSliderRangeMinus","n":"Tempo Slider Range Minus","g":"Application","d":"Decrease tempo slider range","led":0,"t":"button"},{"k":"sampler.toggleSamplerShown","n":"Toggle Sampler","g":"Sampler","d":"Show/hide sampler panel","led":1,"t":"button"},{"k":"sampler.volume","n":"Sampler Volume","g":"Sampler","d":"Sampler master volume","led":0,"t":"knob"},{"k":"sampler.player1.playingConsideringHoldSetting","n":"Player [1]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.player2.playingConsideringHoldSetting","n":"Player [2]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.player3.playingConsideringHoldSetting","n":"Player [3]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.player4.playingConsideringHoldSetting","n":"Player [4]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.player5.playingConsideringHoldSetting","n":"Player [5]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.player6.playingConsideringHoldSetting","n":"Player [6]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.player7.playingConsideringHoldSetting","n":"Player [7]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.player8.playingConsideringHoldSetting","n":"Player [8]","g":"Sampler","d":"Trigger sampler pad","led":1,"t":"button"},{"k":"sampler.turntable{N}.player1.playingConsideringHoldSetting","n":"Player [1] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player2.playingConsideringHoldSetting","n":"Player [2] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player3.playingConsideringHoldSetting","n":"Player [3] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player4.playingConsideringHoldSetting","n":"Player [4] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player5.playingConsideringHoldSetting","n":"Player [5] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player6.playingConsideringHoldSetting","n":"Player [6] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player7.playingConsideringHoldSetting","n":"Player [7] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player8.playingConsideringHoldSetting","n":"Player [8] Playing","g":"Sampler (Per-Deck)","d":"Trigger sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player1.paused","n":"Player [1] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player2.paused","n":"Player [2] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player3.paused","n":"Player [3] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player4.paused","n":"Player [4] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player5.paused","n":"Player [5] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player6.paused","n":"Player [6] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player7.paused","n":"Player [7] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"sampler.turntable{N}.player8.paused","n":"Player [8] Paused","g":"Sampler (Per-Deck)","d":"Pause sampler pad for deck N","led":1,"t":"button"},{"k":"turntable{N}.unmixerThreeTrackChannel1Muted","n":"Track 1 Mute","g":"Unmixer (3-Track)","d":"Mute instrument stem","led":1,"t":"button"},{"k":"turntable{N}.unmixerThreeTrackChannel2Muted","n":"Track 2 Mute","g":"Unmixer (3-Track)","d":"Mute instrument stem","led":1,"t":"button"},{"k":"turntable{N}.unmixerThreeTrackChannel3Muted","n":"Track 3 Mute","g":"Unmixer (3-Track)","d":"Mute instrument stem","led":1,"t":"button"},{"k":"turntable{N}.unmixerThreeTrackChannel1Volume","n":"Track 1 Volume","g":"Unmixer (3-Track)","d":"Volume for 3-track stem","led":0,"t":"knob"},{"k":"turntable{N}.unmixerThreeTrackChannel2Volume","n":"Track 2 Volume","g":"Unmixer (3-Track)","d":"Volume for 3-track stem","led":0,"t":"knob"},{"k":"turntable{N}.unmixerThreeTrackChannel3Volume","n":"Track 3 Volume","g":"Unmixer (3-Track)","d":"Volume for 3-track stem","led":0,"t":"knob"},{"k":"turntable{N}.unmixerFourTrackChannel1VolumeEQ","n":"Track 1 Volume EQ","g":"Unmixer (4-Track)","d":"Volume/EQ for 4-track stem","led":0,"t":"knob"},{"k":"turntable{N}.unmixerFourTrackChannel2VolumeEQ","n":"Track 2 Volume EQ","g":"Unmixer (4-Track)","d":"Volume/EQ for 4-track stem","led":0,"t":"knob"},{"k":"turntable{N}.unmixerFourTrackChannel3VolumeEQ","n":"Track 3 Volume EQ","g":"Unmixer (4-Track)","d":"Volume/EQ for 4-track stem","led":0,"t":"knob"},{"k":"turntable{N}.unmixerFourTrackChannel4VolumeEQ","n":"Track 4 Volume EQ","g":"Unmixer (4-Track)","d":"Volume/EQ for 4-track stem","led":0,"t":"knob"},{"k":"turntable{N}.unmixerGenericChannel1Muted","n":"Channel 1 Mute","g":"Unmixer (Generic)","d":"Mute generic channel","led":1,"t":"button"},{"k":"turntable{N}.unmixerGenericChannel2Muted","n":"Channel 2 Mute","g":"Unmixer (Generic)","d":"Mute generic channel","led":1,"t":"button"},{"k":"turntable{N}.unmixerGenericChannel3Muted","n":"Channel 3 Mute","g":"Unmixer (Generic)","d":"Mute generic channel","led":1,"t":"button"},{"k":"turntable{N}.unmixerGenericChannel4Muted","n":"Channel 4 Mute","g":"Unmixer (Generic)","d":"Mute generic channel","led":1,"t":"button"},{"k":"turntable{N}.unmixerGenericChannel1Solo","n":"Channel 1 Solo","g":"Unmixer (Generic)","d":"Solo generic channel","led":1,"t":"button"},{"k":"turntable{N}.unmixerGenericChannel2Solo","n":"Channel 2 Solo","g":"Unmixer (Generic)","d":"Solo generic channel","led":1,"t":"button"},{"k":"turntable{N}.unmixerGenericChannel3Solo","n":"Channel 3 Solo","g":"Unmixer (Generic)","d":"Solo generic channel","led":1,"t":"button"},{"k":"turntable{N}.unmixerGenericChannel4Solo","n":"Channel 4 Solo","g":"Unmixer (Generic)","d":"Solo generic channel","led":1,"t":"button"},{"k":"application.toggleUnmixerEQMode","n":"Toggle EQ Mode (Global)","g":"Unmixer Mode","d":"Switch EQ mode for all decks","led":1,"t":"button"},{"k":"turntable{N}.toggleUnmixerEQMode","n":"Toggle EQ Mode (Per Deck)","g":"Unmixer Mode","d":"Switch EQ mode for a specific deck","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice1","n":"Slicer Slice 1","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice2","n":"Slicer Slice 2","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice3","n":"Slicer Slice 3","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice4","n":"Slicer Slice 4","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice5","n":"Slicer Slice 5","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice6","n":"Slicer Slice 6","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice7","n":"Slicer Slice 7","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicer8Slice8","n":"Slicer Slice 8","g":"Slicer","d":"Trigger slicer slice","led":1,"t":"button"},{"k":"turntable{N}.slicerRepeatDurationDouble","n":"Slicer Repeat Duration Double","g":"Slicer","d":"Double slicer repeat duration","led":0,"t":"button"},{"k":"turntable{N}.slicerRepeatDurationHalf","n":"Slicer Repeat Duration Half","g":"Slicer","d":"Halve slicer repeat duration","led":0,"t":"button"},{"k":"turntable{N}.padModeHotCue","n":"Pad Mode: Hot Cue","g":"Pad Mode","d":"Switch to hot cue pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModeAutoLoop","n":"Pad Mode: Auto Loop","g":"Pad Mode","d":"Switch to auto loop pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModeBounceLoop","n":"Pad Mode: Bounce Loop","g":"Pad Mode","d":"Switch to bounce loop pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModeSkipping","n":"Pad Mode: Skipping","g":"Pad Mode","d":"Switch to skipping pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModeSampler","n":"Pad Mode: Sampler","g":"Pad Mode","d":"Switch to sampler pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModeUnmixer","n":"Pad Mode: Unmixer","g":"Pad Mode","d":"Switch to unmixer pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModeInstantFX","n":"Pad Mode: Instant FX","g":"Pad Mode","d":"Switch to instant FX pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModePitchPlay","n":"Pad Mode: Pitch Play","g":"Pad Mode","d":"Switch to pitch play pad mode","led":1,"t":"button"},{"k":"turntable{N}.padModeEmpty","n":"Pad Mode: Empty","g":"Pad Mode","d":"Clear pad mode","led":1,"t":"button"},{"k":"video.toggle","n":"Video On/Off","g":"Video & Visual","d":"Toggle video playback","led":1,"t":"button"},{"k":"video.fullScreen","n":"Video Full Screen","g":"Video & Visual","d":"Video full screen mode","led":1,"t":"button"},{"k":"video.transition","n":"Video Transition","g":"Video & Visual","d":"Trigger video transition effect","led":0,"t":"knob"},{"k":"turntable{N}.monoMeter","n":"Mono Meter","g":"Metering","d":"Mono level meter output","led":0,"t":"button"},{"k":"turntable{N}.startPoint","n":"Start Point","g":"Start Point","d":"Set/jump to start point","led":1,"t":"button"}]/*ACTIONS-END*/;
+{
+  const i = ACTIONS.findIndex((a) => a.k === 'application.modifier');
+  const mod = i >= 0 ? ACTIONS.splice(i, 1)[0] : { k: 'application.modifier', led: 1, t: 'button' };
+  ACTIONS.unshift(
+    Object.assign(mod, { n: 'Shift (modifier)', g: 'Layers', d: 'Hold to reach the Shift layer of every control' }),
+    { k: 'application', n: 'No-op (disable control)', g: 'Layers', d: 'Makes the control do nothing in this layer', led: 0, t: 'any' });
+}
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const STORE = 'djayMidiMapper.v1';
+const K2_USBID = 586153985;
+
+// ---------- plist ----------
+const REAL_KEYS = new Set(['rotarySensitivity', 'midiMinValue', 'midiMaxValue']);
+
+function parsePlist(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.querySelector('parsererror') || doc.documentElement.tagName !== 'plist') throw new Error('Not a property list file');
+  const read = (el, key) => {
+    switch (el.tagName) {
+      case 'dict': {
+        const o = {}, ch = [...el.children];
+        for (let i = 0; i + 1 < ch.length; i += 2) o[ch[i].textContent] = read(ch[i + 1], ch[i].textContent);
+        return o;
+      }
+      case 'array': return [...el.children].map((c) => read(c, key));
+      case 'string': return el.textContent;
+      case 'integer': return parseInt(el.textContent, 10);
+      case 'real': if (key) REAL_KEYS.add(key); return parseFloat(el.textContent);
+      case 'true': return true;
+      case 'false': return false;
+      default: return { __xml: new XMLSerializer().serializeToString(el) }; // data/date: pass through untouched
+    }
+  };
+  return read(doc.documentElement.firstElementChild, null);
+}
+
+function toPlist(root) {
+  const x = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const ser = (v, key, ind) => {
+    const t = '\t'.repeat(ind);
+    if (v === true) return t + '<true/>';
+    if (v === false) return t + '<false/>';
+    if (typeof v === 'string') return `${t}<string>${x(v)}</string>`;
+    if (typeof v === 'number') return REAL_KEYS.has(key) || !Number.isInteger(v) ? `${t}<real>${v}</real>` : `${t}<integer>${v}</integer>`;
+    if (Array.isArray(v)) return v.length ? `${t}<array>\n${v.map((i) => ser(i, key, ind + 1)).join('\n')}\n${t}</array>` : `${t}<array/>`;
+    if (v.__xml) return t + v.__xml;
+    const keys = Object.keys(v).sort();
+    if (!keys.length) return `${t}<dict/>`;
+    return `${t}<dict>\n${keys.map((k) => `${t}\t<key>${x(k)}</key>\n${ser(v[k], k, ind + 1)}`).join('\n')}\n${t}</dict>`;
+  };
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n' +
+    ser(root, null, 0) + '\n</plist>\n';
+}
+
+// ---------- state ----------
+const fresh = () => ({
+  name: 'My Xone K2', meta: { endpointName: 'XONE:K2', USBID: K2_USBID, schemeVersion: 1, version: 0 },
+  entries: [], profile: 'k2', channel: 14, deckOrder: [1, 2, 3, 4], labels: {}, learned: [],
+});
+let S = fresh();
+let sel = null;          // selected control id "msg:ch:data"
+let slot = 0;            // 0 = normal layer, 1 = shift layer
+let follow = true;
+let foreignCh = null;    // K2 traffic seen on a channel other than the configured one
+const ccSeen = {};       // id -> Set of values, to tell encoders from pots
+
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify({ S, reals: [...REAL_KEYS] })); } catch (e) { /* private mode */ }
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE));
+    if (d && d.S && Array.isArray(d.S.entries)) { S = Object.assign(fresh(), d.S); d.reals.forEach((k) => REAL_KEYS.add(k)); }
+  } catch (e) { /* start fresh */ }
+}
+
+// ---------- controls ----------
+const cid = (msg, ch, data) => `${msg}:${ch}:${data}`;
+
+function k2Controls(ch) {
+  const out = [];
+  const add = (kind, msg, data, name, extra) => out.push(Object.assign({ id: cid(msg, ch, data), kind, msg, ch, data, name, led: msg === 1 ? 36 : 0 }, extra));
+  for (let c = 0; c < 4; c++) {
+    add('enc', 3, c, `Encoder ${c + 1}`, { col: c, row: 'enc' });
+    add('btn', 1, 52 + c, `Encoder ${c + 1} push`, { col: c, row: 'encp' });
+    for (let p = 0; p < 3; p++) {
+      add('pot', 3, 4 + p * 4 + c, `Pot ${p + 1} · column ${c + 1}`, { col: c, row: 'pot' + p });
+      add('btn', 1, 48 - p * 4 + c, `Pot ${p + 1} button · column ${c + 1}`, { col: c, row: 'pb' + p });
+    }
+    add('fader', 3, 16 + c, `Fader ${c + 1}`, { col: c, row: 'fader' });
+    for (let r = 0; r < 4; r++) add('btn', 1, 36 - r * 4 + c, `Button ${String.fromCharCode(65 + r * 4 + c)}`, { col: c, row: 'grid' + r });
+  }
+  add('btn', 1, 12, 'Layer', { row: 'bottom', led: 4 });
+  add('enc', 3, 20, 'Bottom encoder L', { row: 'bottom' });
+  add('btn', 1, 13, 'Bottom encoder L push', { row: 'bottom', led: 0 });
+  add('enc', 3, 21, 'Bottom encoder R', { row: 'bottom' });
+  add('btn', 1, 14, 'Bottom encoder R push', { row: 'bottom', led: 0 });
+  add('btn', 1, 15, 'Exit setup', { row: 'bottom', led: 4 });
+  return out;
+}
+
+// Template controls (if any) + everything else that appears in the mapping or was seen on the wire.
+function allControls() {
+  const list = S.profile === 'k2' ? k2Controls(S.channel) : [];
+  const have = new Set(list.map((c) => c.id));
+  const extra = (msg, ch, data, kind) => {
+    const id = cid(msg, ch, data);
+    if (have.has(id)) return;
+    have.add(id);
+    list.push({ id, kind, msg, ch, data, name: `${msg === 1 ? 'Note' : 'CC'} ${data}`, led: 0, extra: true });
+  };
+  for (const l of S.learned) extra(l.msg, l.ch, l.data, l.kind);
+  for (const e of S.entries) if (isMapping(e)) extra(e.midiMessageType, e.midiChannel, e.midiData, e.midiMessageType === 1 ? 'btn' : /^rotary/.test(e.controlType || '') ? 'enc' : 'pot');
+  return list;
+}
+const isMapping = (e) => e && typeof e.keyPath === 'string' && Number.isInteger(e.midiData);
+const entriesOf = (c, mod) => S.entries.filter((e) => e.midiMessageType === c.msg && e.midiChannel === c.ch && e.midiData === c.data && !!e.modifier === !!mod);
+
+// ---------- actions ----------
+const BY_KEY = new Map(ACTIONS.map((a) => [a.k, a]));
+function describe(keyPath) {
+  let a = BY_KEY.get(keyPath), deck = 0;
+  if (!a) {
+    const m = keyPath.match(/turntable([1-4])/);
+    if (m) { a = BY_KEY.get(keyPath.replace(m[0], 'turntable{N}')); deck = +m[1]; }
+  }
+  if (!a && !keyPath.includes('.')) return { name: 'No-op', deck: 0, action: BY_KEY.get('application') };
+  if (!deck) { const m = keyPath.match(/^(?:mixer\.(?:lineVolume|monitorActive)|musicLibrary\.load)([1-4])$/); if (m) deck = +m[1]; }
+  return { name: a ? a.n : keyPath.split('.').pop(), deck, action: a };
+}
+const fits = (action, kind) => !action || action.t === 'any' ||
+  (kind === 'btn' ? action.t === 'button' : kind === 'enc' ? action.t !== 'button' : action.t === 'knob');
+
+function makeEntry(c, mod, action, keyPath) {
+  const e = { keyPath, midiChannel: c.ch, midiData: c.data, midiMessageType: c.msg };
+  if (mod) e.modifier = true;
+  if (c.msg === 3 && c.kind === 'enc') e.controlType = 'rotary';
+  if (c.msg === 1 && action.led) e.output = {};
+  if (keyPath === 'application.modifier') e.buttonMode = 'hold';
+  return e;
+}
+
+// Replace the slot's unconditional entry (entries carrying a `condition` are left alone).
+function assign(c, mod, action, keyPath) {
+  const e = makeEntry(c, mod, action, keyPath);
+  const i = S.entries.findIndex((x) => x.midiMessageType === c.msg && x.midiChannel === c.ch && x.midiData === c.data && !!x.modifier === !!mod && !x.condition);
+  if (i >= 0) S.entries[i] = e; else S.entries.push(e);
+}
+
+function pick(action) {
+  const all = allControls();
+  const c = all.find((x) => x.id === sel);
+  if (!c) return;
+  const deckSel = +$('#deck').value;
+  const deckFor = (ctl) => deckSel || (ctl.col != null ? S.deckOrder[ctl.col] : 1);
+  // per-deck variants: turntable{N}.x, or numbered globals such as mixer.lineVolume1..4
+  const numbered = !action.k.includes('{N}') && /[1-4]$/.test(action.k) && [1, 2, 3, 4].every((n) => BY_KEY.has(action.k.replace(/[1-4]$/, n)));
+  const pathFor = (deck) => action.k.includes('{N}') ? action.k.replace('{N}', deck) : numbered ? action.k.replace(/[1-4]$/, deck) : action.k;
+
+  if ($('#rowApply').checked && c.col != null && (action.k.includes('{N}') || numbered)) {
+    for (const sib of all.filter((x) => x.row === c.row && x.col != null)) assign(sib, slot, action, pathFor(S.deckOrder[sib.col]));
+  } else {
+    assign(c, slot, action, action.k.includes('{N}') ? pathFor(deckFor(c)) : action.k);
+  }
+  render();
+}
+
+// ---------- rendering ----------
+function tile(c) {
+  const mine = entriesOf(c, slot), other = entriesOf(c, !slot);
+  const d = mine.length ? describe(mine[0].keyPath) : null;
+  const cls = ['ctl', c.kind, c.id === sel ? 'sel' : '', mine.length ? (d.deck ? 'd' + d.deck : 'dg') : 'empty', other.length ? 'other' : ''].join(' ');
+  const text = d ? (d.deck ? `D${d.deck} ` : '') + d.name + (mine.length > 1 ? ` +${mine.length - 1}` : '') : (S.labels[c.id] || (c.extra ? '—' : shortName(c)));
+  const idline = c.extra ? `<span class="id">${esc(S.labels[c.id] || `${c.msg === 1 ? 'N' : 'CC'}${c.data} ch${c.ch + 1}`)}</span>` : '';
+  const glyph = c.kind === 'btn' ? '' : '<span class="glyph"></span>';
+  return `<button class="${cls}" data-id="${c.id}" title="${esc(c.name)} — ${c.msg === 1 ? 'Note' : 'CC'} ${c.data}, ch ${c.ch + 1}">${glyph}<span class="lbl">${esc(text)}</span>${idline}</button>`;
+}
+const shortName = (c) => c.name.replace(/ · column \d/, '').replace(/^Pot \d button$/, 'btn').replace(/^Encoder \d push$/, 'push').replace('Bottom encoder ', 'Enc ').replace(/^Button /, '');
+
+function renderSurface() {
+  const all = allControls();
+  let h = '';
+  if (S.profile === 'k2') {
+    const rows = ['enc', 'encp', 'pot0', 'pb0', 'pot1', 'pb1', 'pot2', 'pb2', 'fader', 'grid0', 'grid1', 'grid2', 'grid3'];
+    h += '<div class="k2">';
+    for (const r of rows) {
+      if (r === 'fader' || r === 'grid0') h += '<div class="gap"></div>';
+      h += `<div class="row">${all.filter((c) => c.row === r).map(tile).join('')}</div>`;
+    }
+    const b = Object.fromEntries(all.filter((c) => c.row === 'bottom').map((c) => [c.data + ':' + c.msg, c]));
+    h += `<div class="gap"></div><div class="row">${tile(b['12:1'])}${tile(b['20:3'])}${tile(b['21:3'])}${tile(b['15:1'])}</div>`;
+    h += `<div class="row"><span></span>${tile(b['13:1'])}${tile(b['14:1'])}<span></span></div></div>`;
+  }
+  const extra = all.filter((c) => c.extra).sort((a, b) => b.msg - a.msg || a.ch - b.ch || a.data - b.data);
+  if (extra.length) h += `<h2 style="margin-top:14px">${S.profile === 'k2' ? 'Other controls' : 'Controls'}</h2><div class="generic">${extra.map(tile).join('')}</div>`;
+  else if (S.profile !== 'k2') h += '<p class="hint">No controls yet. Move every knob, fader and button on the hardware once — each one appears here as it is touched. Or import an existing mapping.</p>';
+  $('#surface').innerHTML = h;
+  document.querySelectorAll('.layerbar [data-slot]').forEach((b) => b.classList.toggle('on', +b.dataset.slot === slot));
+  const n = S.entries.filter(isMapping).length;
+  $('#count').textContent = `${n} mapping${n === 1 ? '' : 's'}`;
+}
+
+function ledState(e, c) {
+  if (!e.output) return 'none';
+  const k = Object.keys(e.output);
+  if (!k.length) return 'default';
+  if (e.output.midiData === c.data + c.led) return 'amber';
+  if (e.output.midiData === c.data + 2 * c.led) return 'green';
+  return 'custom';
+}
+
+function renderInspector() {
+  const c = allControls().find((x) => x.id === sel);
+  const box = $('#inspector');
+  $('#rowWrap').style.display = c && c.col != null ? '' : 'none';
+  if (!c) { box.innerHTML = '<div class="none">Select a control — click it, or touch it on the hardware.</div>'; return; }
+  const list = entriesOf(c, slot);
+  let h = `<div class="ctlhead"><b>${esc(S.labels[c.id] || c.name)}</b><code>${c.msg === 1 ? 'Note' : 'CC'} ${c.data} · ch ${c.ch + 1} (file: ${c.ch})</code>
+    <span class="chip">${slot ? 'Shift' : 'Normal'} layer</span>
+    ${c.extra ? `<label class="f">Label <input type="text" id="label" value="${esc(S.labels[c.id] || '')}" placeholder="e.g. Jog L"></label>` : ''}
+    ${c.msg === 1 ? '<button class="btn" id="flash" title="Light this LED on the hardware">Flash LED</button>' : ''}</div>`;
+  if (!list.length) h += `<div class="none">Nothing mapped on this layer. Pick an action below.</div>`;
+  list.forEach((e) => {
+    const i = S.entries.indexOf(e), d = describe(e.keyPath);
+    const sel2 = (key, opts) => `<select data-i="${i}" data-k="${key}">${opts.map(([v, t]) => `<option value="${v}"${(e[key] || '') === v ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+    const chk = (key, t) => `<label class="f"><input type="checkbox" data-i="${i}" data-k="${key}"${e[key] ? ' checked' : ''}> ${t}</label>`;
+    const known = ['keyPath', 'midiChannel', 'midiData', 'midiMessageType', 'modifier', 'controlType', 'buttonMode', 'output', 'flipped', 'pickupMode', 'rotarySensitivity'];
+    const rest = Object.keys(e).filter((k) => !known.includes(k));
+    let o = '';
+    if (c.msg === 3) {
+      o += `<label class="f">Type ${sel2('controlType', [['', 'absolute (pot/fader)'], ['rotary', 'rotary (relative)'], ['rotary-64', 'rotary-64'], ['rotary-absolute', 'rotary-absolute'], ['button', 'button']])}</label>`;
+      if (/^rotary/.test(e.controlType || '')) o += `<label class="f">Sensitivity <input type="number" data-i="${i}" data-k="rotarySensitivity" value="${e.rotarySensitivity ?? ''}" placeholder="default" min="1" max="1000"></label>`;
+      else o += chk('pickupMode', 'pickup');
+      o += chk('flipped', 'flipped');
+    } else {
+      o += `<label class="f">Mode ${sel2('buttonMode', [['', 'default'], ['toggle', 'toggle'], ['hold', 'hold'], ['button-blinking', 'blinking']])}</label>`;
+      const ls = ledState(e, c);
+      const lo = [['none', 'off'], ['default', c.led ? 'red (default)' : 'default']];
+      if (c.led) lo.push(['amber', 'amber'], ['green', 'green']);
+      if (ls === 'custom') lo.push(['custom', 'custom (kept)']);
+      o += `<label class="f">LED <select data-i="${i}" data-k="__led">${lo.map(([v, t]) => `<option value="${v}"${ls === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`;
+    }
+    h += `<div class="entry"><div class="top"><span class="badge ${d.deck ? 'd' + d.deck : 'dg'}">${d.deck ? 'D' + d.deck : 'ALL'}</span><b>${esc(d.name)}</b>
+      <code>${esc(e.keyPath)}</code><button class="x" data-del="${i}" title="Remove">×</button></div>
+      <div class="opts">${o}${!c.extra && !fits(d.action, c.kind) ? '<span class="chip warn">action expects a different control type</span>' : ''}
+      ${rest.map((k) => `<span class="chip" title="${esc(JSON.stringify(e[k]))}">${esc(k)} kept</span>`).join('')}</div></div>`;
+  });
+  box.innerHTML = h;
+}
+
+function renderActions() {
+  const c = allControls().find((x) => x.id === sel);
+  const q = $('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const onlyFits = $('#fits').checked && c;
+  let h = '', group = '', first = true;
+  for (const a of ACTIONS) {
+    if (onlyFits && !fits(a, c.kind)) continue;
+    const hay = `${a.n} ${a.k} ${a.g} ${a.d}`.toLowerCase();
+    if (!q.every((w) => hay.includes(w))) continue;
+    if (a.g !== group) { group = a.g; h += `<h3>${esc(group)}</h3>`; }
+    h += `<button class="act${first && q.length ? ' first' : ''}" data-k="${esc(a.k)}"><span class="n">${esc(a.n)}</span><span class="d">${esc(a.d)}</span><span class="t">${a.k.includes('{N}') ? 'deck' : ''}${a.led ? ' led' : ''}</span></button>`;
+    first = false;
+  }
+  $('#actions').innerHTML = h || '<div class="none">No matching actions. Untick “fits control” to see everything.</div>';
+}
+
+function renderChecks() {
+  const out = [], all = allControls(), byId = new Map(all.map((c) => [c.id, c]));
+  const w = (t) => out.push(`<div class="w">${t}</div>`);
+  if (!S.entries.length) out.push('<div>Empty mapping. Select a control and pick an action.</div>');
+  if (S.entries.some((e) => e.modifier) && !S.entries.some((e) => e.keyPath === 'application.modifier')) w('Shift-layer mappings exist but no button is mapped to <b>Modifier</b> (search “shift”).');
+  const seen = new Map(); let dup = 0, mis = 0;
+  for (const e of S.entries) {
+    if (!isMapping(e)) continue;
+    if (!e.condition) { const k = cid(e.midiMessageType, e.midiChannel, e.midiData) + (e.modifier ? 's' : ''); if (seen.has(k)) dup++; seen.set(k, 1); }
+    const c = byId.get(cid(e.midiMessageType, e.midiChannel, e.midiData));
+    if (c && !c.extra && !fits(describe(e.keyPath).action, c.kind)) mis++;
+  }
+  if (dup) w(`${dup} control${dup > 1 ? 's have' : ' has'} more than one action on the same layer.`);
+  if (mis) w(`${mis} mapping${mis > 1 ? 's put' : ' puts'} an action on an unsuitable control type (e.g. a knob action on a button).`);
+  if (S.profile === 'k2' && foreignCh != null && foreignCh !== S.channel) w(`MIDI is arriving on ch ${foreignCh + 1} but the K2 surface is set to ch ${S.channel + 1}.`);
+  if (!S.meta.endpointName) w('Device name is empty — djay matches mappings to hardware by this name.');
+  if (!out.length) out.push('<div>No problems found.</div>');
+  $('#checks').innerHTML = out.join('');
+}
+
+function renderHeader() {
+  $('#name').value = S.name;
+  $('#endpoint').value = S.meta.endpointName || '';
+  $('#profile').value = S.profile;
+  $('#channel').value = S.channel;
+  const k2 = S.profile === 'k2';
+  $('#chWrap').style.display = $('#deckOrder').style.display = k2 ? '' : 'none';
+  document.querySelectorAll('#deckOrder input').forEach((el, i) => { el.value = S.deckOrder[i]; });
+}
+
+function render() { renderSurface(); renderInspector(); renderActions(); renderChecks(); save(); }
+function select(id) { if (sel === id) return; sel = id; render(); }
+
+// ---------- events ----------
+$('#channel').innerHTML = Array.from({ length: 16 }, (_, i) => `<option value="${i}">${i + 1}</option>`).join('');
+
+$('#surface').addEventListener('click', (ev) => { const b = ev.target.closest('.ctl'); if (b) select(b.dataset.id); });
+document.querySelector('.layerbar').addEventListener('click', (ev) => { const b = ev.target.closest('[data-slot]'); if (b) { slot = +b.dataset.slot; render(); } });
+$('#actions').addEventListener('click', (ev) => { const b = ev.target.closest('.act'); if (b) pick(BY_KEY.get(b.dataset.k)); });
+$('#q').addEventListener('input', renderActions);
+$('#q').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { const b = $('#actions .act'); if (b) pick(BY_KEY.get(b.dataset.k)); } });
+$('#fits').addEventListener('change', renderActions);
+document.addEventListener('keydown', (ev) => {
+  if (/INPUT|SELECT|TEXTAREA/.test(ev.target.tagName)) { if (ev.key === 'Escape') ev.target.blur(); return; }
+  if (ev.key === '/') { ev.preventDefault(); $('#q').select(); }
+  if (ev.key === 's' || ev.key === 'S') { slot = slot ? 0 : 1; render(); }
+});
+
+$('#inspector').addEventListener('click', (ev) => {
+  const del = ev.target.closest('[data-del]');
+  if (del) { S.entries.splice(+del.dataset.del, 1); render(); }
+  if (ev.target.id === 'flash') flashLed();
+});
+$('#inspector').addEventListener('change', (ev) => {
+  const el = ev.target;
+  if (el.id === 'label') { if (el.value.trim()) S.labels[sel] = el.value.trim(); else delete S.labels[sel]; render(); return; }
+  const e = S.entries[+el.dataset.i], k = el.dataset.k;
+  if (!e || !k) return;
+  const c = allControls().find((x) => x.id === sel);
+  if (k === '__led') {
+    if (el.value === 'none') delete e.output;
+    else if (el.value === 'default') e.output = {};
+    else if (el.value !== 'custom') e.output = { midiChannel: c.ch, midiData: c.data + c.led * (el.value === 'amber' ? 1 : 2), midiMessageType: 1 };
+  } else if (el.type === 'checkbox') { if (el.checked) e[k] = true; else delete e[k]; }
+  else if (el.type === 'number') { if (el.value === '') delete e[k]; else e[k] = +el.value; }
+  else { if (el.value) e[k] = el.value; else delete e[k]; if (k === 'controlType' && !/^rotary/.test(el.value)) delete e.rotarySensitivity; }
+  render();
+});
+
+$('#name').addEventListener('change', (ev) => { S.name = ev.target.value.trim() || 'mapping'; save(); });
+$('#endpoint').addEventListener('change', (ev) => { S.meta.endpointName = ev.target.value.trim(); render(); });
+$('#profile').addEventListener('change', (ev) => { S.profile = ev.target.value; renderHeader(); render(); });
+$('#channel').addEventListener('change', (ev) => { rechannel(+ev.target.value); render(); });
+$('#deckOrder').addEventListener('change', (ev) => {
+  const i = [...document.querySelectorAll('#deckOrder input')].indexOf(ev.target), v = +ev.target.value;
+  if (v >= 1 && v <= 4) S.deckOrder[i] = v;
+  renderHeader(); render();
+});
+$('#follow').addEventListener('click', (ev) => { follow = !follow; ev.target.classList.toggle('on', follow); });
+$('#new').addEventListener('click', () => {
+  if (S.entries.length && !confirm('Discard the current mapping and start a new one?')) return;
+  const p = S.profile; S = fresh(); S.profile = p;
+  if (p !== 'k2') { S.name = 'My mapping'; S.meta = { endpointName: lastPort || '', schemeVersion: 1, version: 0 }; }
+  sel = null; renderHeader(); render();
+});
+
+// Moving the K2 to another channel carries its mappings along.
+function rechannel(ch) {
+  const old = S.channel;
+  for (const e of S.entries) {
+    if (e.midiChannel === old) e.midiChannel = ch;
+    if (e.output && e.output.midiChannel === old) e.output.midiChannel = ch;
+  }
+  if (sel) { const p = sel.split(':'); if (+p[1] === old) sel = cid(p[0], ch, p[2]); }
+  S.channel = ch;
+}
+
+// ---------- import / export ----------
+function importText(text, filename) {
+  let root;
+  try { root = parsePlist(text); } catch (e) { alert('Could not read that file: ' + e.message); return; }
+  if (!root || !Array.isArray(root.controls)) { alert('That file has no "controls" list — is it a djay MIDI mapping?'); return; }
+  const { controls, ...meta } = root;
+  S = fresh();
+  S.meta = meta;
+  S.entries = controls;
+  S.name = (filename || 'mapping').replace(/\.[^.]+$/, '');
+  S.profile = /xone:?\s?k2/i.test(meta.endpointName || '') ? 'k2' : 'generic';
+  const tally = {};
+  for (const e of S.entries.filter(isMapping)) tally[e.midiChannel] = (tally[e.midiChannel] || 0) + 1;
+  const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+  if (top) S.channel = +top[0];
+  if (S.profile === 'k2') { // recover the column → deck order from the faders / play row
+    k2Controls(S.channel).filter((c) => c.row === 'fader').forEach((c) => {
+      const e = entriesOf(c, 0)[0], d = e && describe(e.keyPath).deck;
+      if (d) S.deckOrder[c.col] = d;
+    });
+  }
+  sel = null; slot = 0; renderHeader(); render();
+}
+function exportFile() {
+  const text = toPlist(Object.assign({}, S.meta, { controls: S.entries }));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/xml' }));
+  a.download = (S.name || 'mapping').replace(/[\\/:]/g, '_') + '.djayMidiMapping';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#import').addEventListener('click', () => $('#file').click());
+$('#file').addEventListener('change', async (ev) => { const f = ev.target.files[0]; if (f) importText(await f.text(), f.name); ev.target.value = ''; });
+$('#export').addEventListener('click', exportFile);
+let dragDepth = 0;
+addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('drag'); } });
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', async (e) => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('drag');
+  const f = e.dataTransfer.files[0]; if (f) importText(await f.text(), f.name);
+});
+
+// ---------- MIDI ----------
+let midi = null, lastPort = '';
+const log = [];
+
+function onMidi(ev) {
+  const [st, data, val = 0] = ev.data;
+  const type = st & 0xf0, ch = st & 0x0f;
+  if (type !== 0x90 && type !== 0x80 && type !== 0xb0) return;
+  const msg = type === 0xb0 ? 3 : 1, on = type === 0xb0 || (type === 0x90 && val > 0);
+  lastPort = ev.target.name || lastPort;
+  log.unshift(`<b>${msg === 1 ? (on ? 'Note on ' : 'Note off') : 'CC      '} ${String(data).padStart(3)}</b>  val ${String(val).padStart(3)}  ch ${ch + 1}`);
+  log.length = Math.min(log.length, 14);
+  $('#monitor').innerHTML = log.join('\n');
+
+  const id = cid(msg, ch, data);
+  let structural = false;
+  if (S.profile === 'k2' && ch !== S.channel) {
+    foreignCh = ch;
+    if (!S.entries.some((e) => e.midiChannel === S.channel)) { rechannel(ch); renderHeader(); structural = true; }
+  }
+  if (msg === 3) (ccSeen[id] = ccSeen[id] || new Set()).add(val);
+  if (!allControls().some((c) => c.id === id)) {
+    S.learned.push({ msg, ch, data, kind: msg === 1 ? 'btn' : 'pot' });
+    structural = true;
+  }
+  // endless encoders only ever send small +/- steps (1..3 / 125..127)
+  const l = S.learned.find((x) => x.msg === 3 && cid(3, x.ch, x.data) === id);
+  if (l && ccSeen[id].size >= 2) {
+    const kind = [...ccSeen[id]].every((v) => v <= 3 || v >= 125) ? 'enc' : 'pot';
+    if (kind !== l.kind) { l.kind = kind; structural = true; }
+  }
+  if (!S.meta.endpointName && lastPort) { S.meta.endpointName = lastPort; renderHeader(); structural = true; }
+
+  if (on && follow && sel !== id) { sel = id; structural = true; }
+  if (structural) render();
+  const el = document.querySelector(`.ctl[data-id="${id}"]`);
+  if (el) {
+    if (msg === 3) el.style.setProperty('--v', val / 127);
+    el.classList.toggle('hit', on);
+    if (msg === 3) { clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('hit'), 150); }
+  }
+}
+
+function flashLed() {
+  const c = allControls().find((x) => x.id === sel);
+  if (!midi || !c) return;
+  const outs = [...midi.outputs.values()];
+  const out = outs.find((o) => o.name === (S.meta.endpointName || lastPort)) || outs[0];
+  if (!out) { alert('No MIDI output available.'); return; }
+  const e = entriesOf(c, slot)[0];
+  const note = e && e.output && Number.isInteger(e.output.midiData) ? e.output.midiData : c.data;
+  out.send([0x90 | c.ch, note, 127]);
+  setTimeout(() => out.send([0x80 | c.ch, note, 0]), 500);
+}
+
+function midiPorts() {
+  const ins = [...midi.inputs.values()];
+  ins.forEach((i) => { i.onmidimessage = onMidi; });
+  $('#midiStatus').classList.toggle('ok', ins.length > 0);
+  $('#midiStatus span').textContent = ins.length ? ins.map((i) => i.name).join(', ') : 'No MIDI device';
+  $('#midiStatus').title = '';
+}
+async function midiInit() {
+  if (!navigator.requestMIDIAccess) {
+    $('#midiStatus span').textContent = 'No Web MIDI (use Chrome)';
+    $('#midiStatus').title = 'This browser has no Web MIDI. Mapping by clicking still works; use Chrome or Edge for live hardware.';
+    return;
+  }
+  try { midi = await navigator.requestMIDIAccess(); midi.onstatechange = midiPorts; midiPorts(); }
+  catch (e) { $('#midiStatus span').textContent = 'MIDI blocked'; $('#midiStatus').title = String(e.message || e); }
+}
+
+load();
+renderHeader();
+render();
+midiInit();
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ Documentation for creating, editing, and understanding MIDI mappings in djay Pro
 |----------|---------|----------|
 | [BEGINNER.md](BEGINNER.md) | Step-by-step tutorial from first mapping to advanced techniques | New users |
 | [REFERENCE.md](REFERENCE.md) | Complete reference: all keyPaths, MIDI types, file format | All users |
+| [tool/](tool/README.md) | Prototype browser-based mapping editor (Xone:K2 layout, learn mode for other hardware) | All users |
 
 
 ## Key Concepts at a Glance
