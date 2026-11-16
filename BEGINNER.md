@@ -1,63 +1,73 @@
 # Beginner's Guide to djay Pro MIDI Mapping
 
-This guide teaches you how to create and customize MIDI mappings for djay Pro, from mapping a single button to building a complete controller configuration.
+This guide takes you from mapping one button to editing a mapping file by hand.
 
-## Table of Contents
+Two things to know first:
 
-1. [Your First Mapping](#1-your-first-mapping)
-2. [Core Concepts](#2-core-concepts)
-3. [Advanced Techniques](#3-advanced-techniques)
-4. [CUE Button Deep Dive](#4-cue-button-deep-dive)
-5. [Function Reference](#5-function-reference)
-6. [Best Practices & Troubleshooting](#6-best-practices--troubleshooting)
+- **Use MIDI Learn for most of the work.** djay's built-in editor creates and saves mapping files for you. Hand-editing is for the few things the editor cannot do.
+- **Hand-editing is unsupported.** Algoriddim does not document the file format. Keep a backup of any file you edit. MIDI mapping requires a PRO subscription.
+
+## Contents
+
+1. [Map a button with MIDI Learn](#1-map-a-button-with-midi-learn)
+2. [Find and open the mapping file](#2-find-and-open-the-mapping-file)
+3. [Read a control entry](#3-read-a-control-entry)
+4. [Common edits](#4-common-edits)
+5. [The CUE button and hot cues](#5-the-cue-button-and-hot-cues)
+6. [Common keyPaths](#6-common-keypaths)
+7. [Troubleshooting](#7-troubleshooting)
 
 ---
 
-## 1. Your First Mapping
+## 1. Map a button with MIDI Learn
 
-Let's map a single **Play/Pause button** for Deck 1 and make its LED light up.
+1. Open djay Pro and connect your controller. If it is not natively supported, djay asks whether you want to configure it. Accept, and the MIDI Configuration window opens. To edit an existing mapping later, open the controller from djay's MIDI device settings.
+2. Press the Play button on your controller. djay adds a row for the note or CC it received.
+3. Set **Target** to `Deck 1` and **Action** to `Play/Pause`.
+4. Open the advanced options and enable **MIDI Out** if the button has an LED.
+5. Test it. The mapping is live before you save.
+6. Click **Done** to save.
 
-### Step 1: Find Your Controller's MIDI Signal
+The advanced options you will meet most often:
 
-1. Open djay Pro and connect your MIDI controller.
-2. Go to `Settings` > `MIDI Devices` and select your controller.
-3. Click "Configure..." to open the MIDI mapping editor.
-4. Press the Play/Pause button on your controller. The editor will show the signal:
-   - **Type:** Note On
-   - **Channel:** 1
-   - **Note/CC:** 11
+| Option | What it does |
+|---|---|
+| Control type | Button, Fader/Knob, or one of three Rotary types for endless encoders and jog wheels. If an encoder misbehaves, try each Rotary type. |
+| Invert | Reverses a control that moves the wrong way. |
+| Pickup mode | Ignores a fader until it reaches the on-screen position, which prevents jumps. |
+| Button mode | Default, Toggle, or Hold. |
+| Speed | How fast an encoder moves its target. |
+| MIDI Out | Sends feedback to the controller so LEDs follow djay's state. |
 
-> **Important:** djay's UI shows channels 1–16, but the mapping file uses 0–15. **Channel 1 in djay = Channel 0 in the file.**
+To add a shift layer, map a button to **General → Controller Shift Key**, then hold it while pressing another control. djay adds a second row marked "(SHIFT)" that you can assign separately.
 
-### Step 2: Create the Mapping File
+---
 
-A mapping is a text file with a `.djayMidiMapping` extension. Create a new file with this structure:
+## 2. Find and open the mapping file
+
+| Platform | Location |
+|---|---|
+| macOS | `~/Music/djay/MIDI Mappings/`. In the MIDI Configuration window, the Share menu has **Show in Finder**. |
+| Windows | `%HOMEPATH%\Music\djay\MIDI Mappings` |
+| iOS / iPadOS | Files app → On My iPhone/iPad → djay. Use the Share icon in the MIDI Configuration window to export. |
+
+The file is named after your mapping, with the extension `.djayMidiMapping`. On macOS it is an XML property list that opens in any text editor. Some Windows users report a JSON file instead, which this guide does not cover.
+
+Before editing:
+
+1. Copy the file somewhere safe.
+2. Quit djay.
+3. Edit, save, and start djay again. It reads mappings at startup.
+
+To customize a natively supported controller, open its mapping in MIDI Learn and save it under a new name. That gives you a file to edit and leaves the built-in mapping intact.
+
+---
+
+## 3. Read a control entry
+
+The file has a `controls` array with one `<dict>` per mapped control:
 
 ```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>USBID</key>
-    <integer>586153985</integer>
-    <key>controls</key>
-    <array>
-        <!-- Mappings go here -->
-    </array>
-</dict>
-</plist>
-```
-
-The `USBID` uniquely identifies your controller. To find yours:
-- Use the MIDI Learn editor in djay to create a dummy mapping, then locate the generated file.
-- Or use the `djay-midi-terminal.py` tool included in this project (run with `⌥u` to auto-detect).
-
-### Step 3: Write the Control Block
-
-Add this inside the `<array>` tags:
-
-```xml
-<!-- Play/Pause Button for Deck 1 -->
 <dict>
     <key>keyPath</key>
     <string>turntable1.playPause</string>
@@ -68,75 +78,88 @@ Add this inside the `<array>` tags:
     <key>midiMessageType</key>
     <integer>1</integer>
     <key>output</key>
-    <dict>
-        <key>midiMinValue</key>
-        <real>0</real>
-        <key>midiMaxValue</key>
-        <real>127</real>
-    </dict>
+    <dict/>
 </dict>
 ```
 
-Save as `My Controller.djayMidiMapping` and place it in djay's MIDI Mappings folder:
-- **macOS:** `~/Music/djay/MIDI Mappings/`
-- **Windows:** User profile under the djay directory
-- **iOS:** Files app → On My iPad/iPhone → djay
+| Key | Meaning |
+|---|---|
+| `keyPath` | What djay does: a target (`turntable1` is Deck 1) and an action (`playPause`). |
+| `midiChannel` | MIDI channel, counted from 0. **Channel 1 in djay's UI is `0` in the file.** |
+| `midiData` | The note or CC number. |
+| `midiMessageType` | `1` for a note (buttons and pads), `3` for a control change (faders, knobs, encoders). |
+| `output` | LED feedback. An empty `<dict/>` sends feedback on the same note with default values. |
+
+Optional keys you will see:
+
+| Key | Values | Meaning |
+|---|---|---|
+| `controlType` | `button`, `rotary`, `rotary-64`, `rotary-absolute` | The MIDI Learn control type. Usually absent for plain buttons and faders. |
+| `buttonMode` | `toggle`, `hold` | The MIDI Learn button mode. |
+| `flipped` | `true` | Invert. |
+| `pickupMode` | `true` | Pickup mode. |
+| `rotarySensitivity` | number | Encoder speed. |
+| `modifier` | `true` | Active only while the Controller Shift Key is held. |
+| `condition` | e.g. `modifier1 == 0` | Active only in a certain pad mode or deck layer. Only in edits of built-in mappings. |
+
+The full list is in [REFERENCE.md](REFERENCE.md#control-entry-fields).
 
 ---
 
-## 2. Core Concepts
+## 4. Common edits
 
-### The Control Block
+### Change what a control does
 
-Every mapped control is a `<dict>` of key-value pairs:
+Replace the `keyPath` string. Take the new value from [section 6](#6-common-keypaths) or from [REFERENCE.md](REFERENCE.md#verified-keypaths).
 
-| Key | Description | Required |
-| :--- | :--- | :--- |
-| `keyPath` | The djay function to control (e.g., `turntable1.playPause`) | Yes |
-| `midiChannel` | MIDI channel (0–15) | Yes |
-| `midiData` | Note or CC number (0–127) | Yes |
-| `midiMessageType` | `1` = Note (buttons), `3` = CC (knobs/faders) | Yes |
-| `output` | LED feedback configuration | No |
-| `controlType` | Physical control type: `button`, `rotary`, `rotary-64` | No |
-| `buttonMode` | `hold` (momentary) or `toggle` (press on/off) | No |
-| `modifier` | `true` = only active when shift/modifier is held | No |
-| `pickupMode` | `true` = prevents value jumps on faders/knobs | No |
-| `rotarySensitivity` | Speed scaling for rotary encoders (e.g., `50.0`) | No |
-| `flipped` | `true` = reverses rotary direction | No |
+### Copy a deck's mapping to another deck
 
-### Choosing `midiMessageType` and `controlType`
+Duplicate the entries and change `turntable1` to `turntable3` in each `keyPath`, along with the `midiChannel` or `midiData` your controller sends for that deck.
 
-| Control | `midiMessageType` | `controlType` |
-|---------|-------------------|---------------|
-| Button / Pad | `1` (Note) | `button` (optional) |
-| Knob / Fader (absolute) | `3` (CC) | — |
-| Endless encoder (relative) | `3` (CC) | `rotary` |
-| Jog wheel / centered encoder | `3` (CC) | `rotary-64` |
+### Set an LED color
 
-### LED Feedback: The `<output>` Block
+On controllers with colored pads, the values djay sends select the color. Set them in the `output` dict:
 
-| Configuration | Behavior |
-| :--- | :--- |
-| `<dict><key>midiMinValue</key><real>0</real><key>midiMaxValue</key><real>127</real></dict>` | Standard on/off: 0 = OFF, 127 = ON |
-| `<dict><key>midiMinValue</key><real>50</real></dict>` | Custom "on" value: 0 = OFF, 50 = ON |
-| `<dict/>` | Empty dict = use djay's built-in default feedback |
+```xml
+<key>output</key>
+<dict>
+    <key>midiMinValue</key>
+    <real>1</real>
+    <key>midiMaxValue</key>
+    <real>49</real>
+</dict>
+```
 
----
+`midiMinValue` is sent when the action is off and `midiMaxValue` when it is on. The numbers that produce each color are specific to your controller; its MIDI implementation chart lists them.
 
-## 3. Advanced Techniques
+### Light an LED on a different note
 
-### Faders and Knobs with Pickup Mode
+If the LED listens on a different note or CC than the button sends, name it in `output`. Only the keys that differ from the input are needed:
 
-Prevent value jumps when the physical and software positions are out of sync:
+```xml
+<key>output</key>
+<dict>
+    <key>midiData</key>
+    <integer>97</integer>
+    <key>midiMessageType</key>
+    <integer>3</integer>
+</dict>
+```
+
+### Make one control do two things
+
+Add two entries with the same `midiChannel`, `midiData` and `midiMessageType` and different `keyPath` values. For example, a knob can move `turntable1.fx3WetDryValue` and `turntable2.fx3WetDryValue` together.
+
+### Stop a fader from jumping
 
 ```xml
 <dict>
     <key>keyPath</key>
-    <string>mixer.lineVolume1</string>
+    <string>turntable1.speed</string>
     <key>midiChannel</key>
     <integer>0</integer>
     <key>midiData</key>
-    <integer>19</integer>
+    <integer>9</integer>
     <key>midiMessageType</key>
     <integer>3</integer>
     <key>pickupMode</key>
@@ -144,12 +167,14 @@ Prevent value jumps when the physical and software positions are out of sync:
 </dict>
 ```
 
-### Endless Encoders (Relative)
-
-For library browsing or parameter scrolling:
+### Map an endless encoder
 
 ```xml
 <dict>
+    <key>controlType</key>
+    <string>rotary</string>
+    <key>flipped</key>
+    <true/>
     <key>keyPath</key>
     <string>musicLibrary.libraryRotary</string>
     <key>midiChannel</key>
@@ -158,40 +183,48 @@ For library browsing or parameter scrolling:
     <integer>64</integer>
     <key>midiMessageType</key>
     <integer>3</integer>
-    <key>controlType</key>
-    <string>rotary</string>
-    <key>rotarySensitivity</key>
-    <real>75</real>
 </dict>
 ```
 
-### Shift Layers
+Use `rotary` if the encoder sends `1` and `127`, `rotary-64` if it sends `63` and `65`. Add `rotarySensitivity` to change the speed; the example mappings use values from `1` (fine) to `300` (fast). Remove `flipped` if it scrolls the wrong way.
 
-#### Method 1: `application.modifier` (Recommended)
+### Add a shift layer
+
+Map the shift button to `application.modifier`, then mark shifted entries with `modifier`:
 
 ```xml
-<!-- The SHIFT button -->
+<!-- Shift button -->
 <dict>
-    <key>buttonMode</key>
-    <string>hold</string>
     <key>keyPath</key>
     <string>application.modifier</string>
     <key>midiChannel</key>
-    <integer>0</integer>
+    <integer>15</integer>
     <key>midiData</key>
-    <integer>63</integer>
+    <integer>15</integer>
     <key>midiMessageType</key>
     <integer>1</integer>
 </dict>
 
-<!-- Shifted function (e.g., Delete Cue 1) -->
+<!-- Unshifted: load to deck 1 -->
 <dict>
     <key>keyPath</key>
-    <string>turntable1.clearCuePoint1</string>
+    <string>musicLibrary.load1</string>
     <key>midiChannel</key>
-    <integer>7</integer>
+    <integer>15</integer>
     <key>midiData</key>
-    <integer>0</integer>
+    <integer>13</integer>
+    <key>midiMessageType</key>
+    <integer>1</integer>
+</dict>
+
+<!-- Shifted: same button loads to deck 3 -->
+<dict>
+    <key>keyPath</key>
+    <string>musicLibrary.load3</string>
+    <key>midiChannel</key>
+    <integer>15</integer>
+    <key>midiData</key>
+    <integer>13</integer>
     <key>midiMessageType</key>
     <integer>1</integer>
     <key>modifier</key>
@@ -199,219 +232,27 @@ For library browsing or parameter scrolling:
 </dict>
 ```
 
-#### Method 2: Different MIDI Channels
+Many controllers have a hardware shift that sends a different note or channel on its own. Those need no `modifier` key: press shift plus the control in MIDI Learn and map the row that appears. `application.modifier` gives you a second, independent shift on any spare button.
 
-When your controller sends on a different channel when shifted:
+### Add a shift layer inside a pad mode
 
-```xml
-<!-- Primary: Play/Pause on Channel 0 -->
-<dict>
-    <key>keyPath</key>
-    <string>turntable1.playPause</string>
-    <key>midiChannel</key>
-    <integer>0</integer>
-    <key>midiData</key>
-    <integer>11</integer>
-    <key>midiMessageType</key>
-    <integer>1</integer>
-</dict>
+MIDI Learn gives you one set of "(SHIFT)" pad mappings shared by every pad mode. In an edit of a built-in mapping, you can get a separate shifted set per pad mode:
 
-<!-- Shifted: Reset Speed on Channel 2 -->
-<dict>
-    <key>keyPath</key>
-    <string>turntable1.resetSpeed</string>
-    <key>midiChannel</key>
-    <integer>2</integer>
-    <key>midiData</key>
-    <integer>11</integer>
-    <key>midiMessageType</key>
-    <integer>1</integer>
-</dict>
-```
+1. Find the eight pad entries for the pad mode. They share a `condition` such as `modifier1 == 0`.
+2. Copy all eight and paste the copies after the originals.
+3. Add `<key>modifier</key><true/>` to each copy.
+4. Restart djay. The copies appear in MIDI Learn as "(SHIFT)" rows that keep the pad mode condition. Assign their actions there or by editing `keyPath`.
 
-### Decoupled LED Output
+See [Shift layers and conditions](REFERENCE.md#shift-layers-and-conditions) for what `condition` can and cannot do.
 
-Send MIDI feedback on a different note/channel than the input:
+### Disable a control
+
+Give it a target with no action. The control is recognized and does nothing:
 
 ```xml
 <dict>
     <key>keyPath</key>
-    <string>mixer.lineVolume1</string>
-    <key>midiChannel</key>
-    <integer>0</integer>
-    <key>midiData</key>
-    <integer>19</integer>
-    <key>midiMessageType</key>
-    <integer>3</integer>
-    <key>output</key>
-    <dict>
-        <key>midiChannel</key>
-        <integer>11</integer>
-        <key>midiData</key>
-        <integer>12</integer>
-        <key>midiMessageType</key>
-        <integer>1</integer>
-    </dict>
-</dict>
-```
-
----
-
-## 4. CUE Button Deep Dive
-
-The standard DJ CUE button behavior is mapped with:
-
-**`turntable{N}.cuePositionOrJumpConsideringPlayState1`**
-
-This emulates a CDJ-style CUE button:
-
-| State | Press | Hold | Release |
-|-------|-------|------|---------|
-| **Paused** | Sets main cue point | Plays from cue point | Stops and returns to cue |
-| **Playing** | Stops and returns to cue | — | — |
-
-The `...ConsideringPlayState` suffix means the function behaves differently depending on whether the deck is playing or paused. The trailing `1` specifies the **primary cue point** (not a numbered hot cue).
-
-### CUE vs. Hot Cues
-
-| Type | Key Path | Purpose |
-|------|----------|---------|
-| **Main CUE** | `turntable{N}.cuePositionOrJumpConsideringPlayState1` | Dedicated CUE button next to Play/Pause |
-| **Hot Cues** | `turntable{N}.cueOrJumpIfAlreadySet[1-8]` | Performance pads for secondary cue points |
-| **Clear Hot Cue** | `turntable{N}.clearCuePoint[1-8]` | Remove a specific hot cue |
-
-### CUE Button Example
-
-```xml
-<dict>
-    <key>keyPath</key>
-    <string>turntable1.cuePositionOrJumpConsideringPlayState1</string>
-    <key>midiChannel</key>
-    <integer>0</integer>
-    <key>midiData</key>
-    <integer>12</integer>
-    <key>midiMessageType</key>
-    <integer>1</integer>
-    <key>controlType</key>
-    <string>button</string>
-    <key>output</key>
-    <dict>
-        <key>midiMinValue</key>
-        <real>0</real>
-        <key>midiMaxValue</key>
-        <real>127</real>
-    </dict>
-</dict>
-```
-
----
-
-## 5. Function Reference
-
-Replace `{N}` with deck number (1–4). Replace `[1-4]` with channel number.
-
-### Deck Controls
-
-| Function | Key Path |
-|----------|----------|
-| Play/Pause | `turntable{N}.playPause` |
-| CUE | `turntable{N}.cuePositionOrJumpConsideringPlayState1` |
-| Sync | `turntable{N}.bpmSync` |
-| Speed Fader | `turntable{N}.speed` |
-| Pitch Bend | `turntable{N}.pitchBendMove` |
-| Key Lock | `turntable{N}.key` |
-| Reverse | `turntable{N}.reverse` |
-| Slip Mode | `turntable{N}.deckSlipToggle` |
-| Hot Cue 1–8 | `turntable{N}.cueOrJumpIfAlreadySet[1-8]` |
-| Clear Hot Cue | `turntable{N}.clearCuePoint[1-8]` |
-| Go to Start | `turntable{N}.gotoZero` |
-| Backspin | `turntable{N}.backspin` |
-| Brake Effect | `turntable{N}.brakeTransitionEffect` |
-
-### Loop Controls
-
-| Function | Key Path |
-|----------|----------|
-| Loop In | `turntable{N}.loopIn` |
-| Loop Out | `turntable{N}.loopOut` |
-| Loop Active | `turntable{N}.loopingActive` |
-| Auto Loop | `turntable{N}.autoLoopOnOff` |
-| Halve Loop | `turntable{N}.autoLoopDurationHalf` |
-| Double Loop | `turntable{N}.autoLoopDurationDouble` |
-| 1/8 Beat Loop | `turntable{N}.autoLoop1BeatInterval` |
-| 1/4 Beat Loop | `turntable{N}.autoLoop2BeatInterval` |
-| 1 Beat Loop | `turntable{N}.autoLoop4BeatInterval` |
-| 2 Beat Loop | `turntable{N}.autoLoop8BeatInterval` |
-| 4 Beat Loop | `turntable{N}.autoLoop16BeatInterval` |
-
-### Mixer & EQ
-
-| Function | Key Path |
-|----------|----------|
-| Channel Volume | `mixer.lineVolume[1-4]` |
-| Crossfader | `mixer.crossfade` |
-| Master Volume | `mixer.masterLevel` |
-| Headphone Cue | `mixer.monitorActive[1-4]` |
-| Headphone Mix | `mixer.monitorMix` |
-| Headphone Volume | `mixer.monitorLevel` |
-| High EQ | `turntable{N}.highEQ` |
-| Mid EQ | `turntable{N}.midEQ` |
-| Low EQ | `turntable{N}.lowEQ` |
-| Filter | `turntable{N}.filter` |
-| Gain | `turntable{N}.gain` |
-
-### Library & Browser
-
-| Function | Key Path |
-|----------|----------|
-| Browse | `musicLibrary.libraryRotary` |
-| Load to Deck | `musicLibrary.load[1-4]` |
-| Load to Selected | `musicLibrary.loadSelection` |
-| Toggle Source | `musicLibrary.toggleLibrarySource` |
-| Preview Track | `musicLibrary.previewTrack` |
-
-### Effects
-
-| Function | Key Path |
-|----------|----------|
-| Master FX | `turntable{N}.fxActive` |
-| FX 1–3 Enable | `turntable{N}.fx[1-3]Enabled` |
-| FX Wet/Dry | `turntable{N}.fx[1-3]WetDryValue` |
-| FX Parameter | `turntable{N}.fx[1-3]ParameterValue` |
-| Instant FX | `turntable{N}.instantFx[1-8]` |
-
-### Application & Global
-
-| Function | Key Path |
-|----------|----------|
-| Shift/Modifier | `application.modifier` |
-| Toggle Sampler | `application.toggleSampler` |
-| Toggle Library | `application.toggleLibrary` |
-| Automix | `application.automix` |
-| Record | `application.recordToggle` |
-| Sampler Volume | `sampler.volume` |
-| Sampler Pad 1–8 | `sampler.player[1-8].playingConsideringHoldSetting` |
-
-> For the complete function reference with all keyPaths, see [MAIN.md](MAIN.md).
-
----
-
-## 6. Best Practices & Troubleshooting
-
-### Organization
-
-- **One channel per deck:** Deck 1 → Channel 0, Deck 2 → Channel 1, global controls → Channel 15.
-- **Document modifiers:** Keep notes on what each modifier represents (shift, pad mode, etc.).
-- **Start in the GUI, refine in text:** Use MIDI Learn to discover keyPaths, then edit the file for complex behaviors.
-
-### Disabling a Control ("No-Op")
-
-Map to a non-functional keyPath to override a control in a specific layer:
-
-```xml
-<dict>
-    <key>keyPath</key>
-    <string>application</string>
+    <string>turntable1</string>
     <key>midiChannel</key>
     <integer>0</integer>
     <key>midiData</key>
@@ -421,24 +262,133 @@ Map to a non-functional keyPath to override a control in a specific layer:
 </dict>
 ```
 
-### Troubleshooting
+---
 
-| Problem | Solution |
-|---------|----------|
-| Button doesn't respond | Check `midiChannel` (remember: UI is 1-based, file is 0-based), then `midiData`, then `midiMessageType` |
-| LED doesn't light up | Verify `<output>` block exists; the LED may use a different note/CC than the input |
-| djay crashes on startup | Malformed XML — remove or fix the offending `.djayMidiMapping` file |
-| Fader jumps to wrong value | Add `<key>pickupMode</key><true/>` to the control entry |
-| Encoder too sensitive | Add `<key>rotarySensitivity</key><real>50</real>` and adjust |
+## 5. The CUE button and hot cues
 
-### Example Mappings
+The main CUE button next to Play is mapped in the examples to:
 
-Ready-to-study example mappings are available in the [examples/](examples/) directory:
+`turntable{N}.cuePositionOrJumpConsideringPlayState1`
 
-| Controller | File | Notes |
-|------------|------|-------|
-| XONE:K2 | `XONE_K2_Mapping_V1_By_LaFleurLabs.djayMidiMapping` | 4-deck, single channel 15, full mixer |
-| Pioneer DDJ-REV1 | `Pioneer_DDJ-REV1_Edit_by_ALEXYUS_DJ.djayMidiMapping` | Multi-channel, heavy modifier usage |
-| Denon MC7000 | `Denon_DJ_MC7000_Edit_1.djayMidiMapping` | Large professional controller |
-| Traktor S8 | `Traktor_Kontrol_S8.djayMidiMapping` | Screen controller mapping |
-| Traktor X1 MK2 | `Traktor_Kontrol_X1_MK2.djayMidiMapping` | Compact effects controller |
+The name says the action depends on the play state. The expected behavior is that of a CDJ CUE button:
+
+| Deck state | Press |
+|---|---|
+| Paused, away from the cue point | Sets the cue point at the current position. |
+| Paused, at the cue point | Plays while held and returns to the cue point on release. |
+| Playing | Jumps back to the cue point and pauses. |
+
+Hot cue pads use a different family:
+
+| Purpose | keyPath |
+|---|---|
+| Main CUE button | `turntable{N}.cuePositionOrJumpConsideringPlayState1` |
+| Hot cue pad: set if empty, otherwise jump | `turntable{N}.cueOrJumpIfAlreadySet[1-8]` |
+| Delete a hot cue (usually shift + pad) | `turntable{N}.clearCuePoint[1-8]` |
+
+The trailing `1` indicates that the CUE button works on cue point 1, the same point hot cue pad 1 uses. This is read from the keyPath name, so check it on your setup if it matters.
+
+---
+
+## 6. Common keyPaths
+
+Replace `{N}` with the deck number `1`–`4`. `[1-8]` means one keyPath per number. Every keyPath here is taken from the mappings in [examples/](examples/). The complete list is in [REFERENCE.md](REFERENCE.md#verified-keypaths).
+
+### Deck
+
+| Action | keyPath |
+|---|---|
+| Play/pause | `turntable{N}.playPause` |
+| CUE | `turntable{N}.cuePositionOrJumpConsideringPlayState1` |
+| Sync | `turntable{N}.bpmSync` |
+| Tempo fader | `turntable{N}.speed` |
+| Key lock | `turntable{N}.key` |
+| Slip mode | `turntable{N}.deckSlipToggle` |
+| Jump to start | `turntable{N}.gotoZero` |
+| Load selected track | `musicLibrary.load[1-4]` |
+| Jog touch | `turntable{N}.scratchingMode` |
+| Jog turn (scratch) | `turntable{N}.scratchingMove` |
+| Jog turn (pitch bend) | `turntable{N}.pitchBendMove` |
+
+### Hot cues and loops
+
+| Action | keyPath |
+|---|---|
+| Hot cue 1–8 | `turntable{N}.cueOrJumpIfAlreadySet[1-8]` |
+| Clear hot cue 1–8 | `turntable{N}.clearCuePoint[1-8]` |
+| Loop in | `turntable{N}.loopIn` |
+| Loop out | `turntable{N}.loopOut` |
+| Reloop | `turntable{N}.reloop` |
+| Auto loop on/off | `turntable{N}.autoLoopOnOff` |
+| Halve loop | `turntable{N}.autoLoopDurationHalf` |
+| Double loop | `turntable{N}.autoLoopDurationDouble` |
+| 1-beat loop | `turntable{N}.autoLoop1BeatInterval` |
+| 4-beat loop | `turntable{N}.autoLoop4BeatInterval` |
+| Jump back 1 beat | `turntable{N}.skipBackward1Beat` |
+| Jump forward 1 beat | `turntable{N}.skipForward1Beat` |
+
+The number in a loop keyPath is the length in beats with the decimal point dropped: `autoLoop05BeatInterval` is half a beat, `autoLoop16BeatInterval` is 16 beats.
+
+### Mixer and EQ
+
+| Action | keyPath |
+|---|---|
+| Channel fader | `mixer.lineVolume[1-4]` |
+| Crossfader | `mixer.crossfade` |
+| Master volume | `mixer.masterLevel` |
+| Headphone cue | `mixer.monitorActive[1-4]` |
+| Gain | `turntable{N}.gain` |
+| High / mid / low EQ | `turntable{N}.highEQ`, `turntable{N}.midEQ`, `turntable{N}.lowEQ` |
+| Filter | `turntable{N}.filter` |
+
+EQ, gain and filter belong to the deck target, not `mixer`.
+
+### Effects
+
+| Action | keyPath |
+|---|---|
+| FX slot 1–3 on/off | `turntable{N}.fx[1-3]Enabled` |
+| FX slot 1–3 wet/dry | `turntable{N}.fx[1-3]WetDryValue` |
+| FX slot 1–3 parameter | `turntable{N}.fx[1-3]ParameterValue` |
+| FX slot 1–3 next effect | `turntable{N}.fx[1-3]SelectNext` |
+| Instant FX 1–8 | `turntable{N}.instantFx[1-8]` |
+
+### Library
+
+| Action | keyPath |
+|---|---|
+| Scroll | `musicLibrary.libraryRotary` |
+| Back | `musicLibrary.libraryBack` |
+| Switch source | `musicLibrary.toggleLibrarySource` |
+| Show/hide library | `musicLibrary.toggleLibraryVisible` |
+
+### Other
+
+| Action | keyPath |
+|---|---|
+| Controller shift key | `application.modifier` |
+| Sampler volume | `sampler.volume` |
+| Sample pad 1–8 | `sampler.turntable{N}.player[1-8].playingConsideringHoldSetting` |
+| Neural Mix: mute stem 1–4 | `turntable{N}.unmixerGenericChannel[1-4]Muted` |
+
+If the action you want is not listed, map it in MIDI Learn, save, and look at the keyPath djay wrote to the file.
+
+---
+
+## 7. Troubleshooting
+
+| Problem | Check |
+|---|---|
+| Control does nothing | `midiChannel` is zero-based: UI channel 1 is `0`. Then check `midiData` and `midiMessageType`. |
+| Button mapped as a fader | The button sends CC. Add `controlType` `button`, or set Control type to Button in MIDI Learn. |
+| LED stays dark | The entry needs an `output` key. If it has one, the LED may listen on a different note, CC or channel: set `midiData`, `midiMessageType` or `midiChannel` inside `output`. |
+| LED has the wrong color | Set `midiMinValue` and `midiMaxValue` in `output` to the values from your controller's MIDI chart. |
+| Fader jumps | Add `pickupMode`. |
+| Encoder jumps to the ends or only moves one way | Wrong rotary type. Switch between `rotary`, `rotary-64` and `rotary-absolute`. |
+| Encoder is too fast or too slow | Adjust `rotarySensitivity`. |
+| Control moves backwards | Add or remove `flipped`. |
+| Edits have no effect | Restart djay. It reads mapping files at startup. |
+| djay ignores the mapping after an edit | The XML may be malformed. Restore your backup. On macOS, `plutil -lint "My Mapping.djayMidiMapping"` reports the line with the error. |
+| A `condition` entry never fires | The variable is not set for your controller. Conditions only work in edits of built-in mappings that already use them. |
+
+To study complete mappings, see [examples/](examples/).
