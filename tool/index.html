@@ -70,6 +70,15 @@ h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: v
 .enc .glyph { border-style: dashed; }
 .fader .glyph { width: 6px; height: 56px; border-radius: 3px; background: #30353f; position: relative; margin-bottom: 2px; }
 .fader .glyph::after { content: ""; position: absolute; left: -7px; width: 20px; height: 8px; border-radius: 2px; background: var(--text); bottom: calc(var(--v, .5) * 48px); }
+.ctl.jog { min-height: 96px; }
+.jog .glyph { width: 52px; height: 52px; border-style: double; border-width: 5px; }
+.ctl.strip { min-height: 58px; }
+.strip .glyph { width: 80%; height: 6px; margin: 8px 0 9px; }
+.strip .glyph::after { left: calc(var(--v, .5) * (100% - 8px)); bottom: -7px; width: 8px; height: 20px; }
+.ledtest { display: inline-flex; align-items: center; gap: 4px; color: var(--dim); font-size: 11px; }
+.ledtest .btn { padding: 2px 7px; font: 11px var(--mono); }
+#lprev .ctl { cursor: grab; }
+#lprev .ctl.drop { border-color: var(--accent); border-style: dashed; }
 .generic { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; min-width: 392px; max-width: 600px; }
 .hint { color: var(--dim); font-size: 12px; max-width: 392px; }
 .hint .btn { margin-top: 8px; color: var(--text); }
@@ -329,28 +338,29 @@ function toPlist(root) {
 // ---------- layouts (JSON) ----------
 // A layout only describes what the hardware looks like; mappings never depend on it.
 const KINDS = ['btn', 'pot', 'fader', 'enc'];
+const LOOKS = { jog: 'enc', strip: 'fader' };   // drawn differently, behave like the kind they map to
 
 function parseCell(v) {
   if (v == null || v === '' || v === '-') return null;
   let o = v;
   if (typeof v === 'string') {
-    const m = v.trim().match(/^(btn|pot|fader|enc)\s+(cc|note|n)?\s*(\d+)(?:@(\d+))?(?:\s+(.+))?$/i);
+    const m = v.trim().match(/^(btn|pot|fader|enc|jog|strip)\s+(cc|note|n)?\s*(\d+)(?:@(\d+))?(?:\s+(.+))?$/i);
     if (!m) throw new Error(`cannot read "${v}" — write e.g. "pot 4", "btn 36 Play", "btn cc12@16 Shift" or "-"`);
-    const type = m[1].toLowerCase(), isCC = m[2] ? m[2].toLowerCase() === 'cc' : type !== 'btn';
-    o = { type, [isCC ? 'cc' : 'note']: +m[3], ch: m[4] ? +m[4] : undefined, label: m[5] };
+    const t = m[1].toLowerCase(), isCC = m[2] ? m[2].toLowerCase() === 'cc' : t !== 'btn';
+    o = { type: t, [isCC ? 'cc' : 'note']: +m[3], ch: m[4] ? +m[4] : undefined, label: m[5] };
   } else if (typeof v !== 'object' || Array.isArray(v)) throw new Error('a control is text such as "pot 4" or an object');
-  const kind = String(o.type || '').toLowerCase();
-  if (!KINDS.includes(kind)) throw new Error(`"type" must be one of ${KINDS.join(', ')}`);
+  const type = String(o.type || '').toLowerCase(), kind = LOOKS[type] || type;
+  if (!KINDS.includes(kind)) throw new Error(`"type" must be one of ${KINDS.concat(Object.keys(LOOKS)).join(', ')}`);
   const msg = Number.isInteger(o.cc) ? 3 : Number.isInteger(o.note) ? 1 : 0;
   if (!msg) throw new Error('needs a "cc" or "note" number');
   const data = msg === 3 ? o.cc : o.note;
   if (data < 0 || data > 127) throw new Error('number must be 0-127');
   if (o.ch != null && !(Number.isInteger(o.ch) && o.ch >= 1 && o.ch <= 16)) throw new Error('channel must be 1-16');
-  return { kind, msg, data, ch: o.ch != null ? o.ch - 1 : null, label: o.label ? String(o.label) : '', led: Number.isInteger(o.led) ? o.led : null, w: o.w > 1 ? Math.floor(o.w) : 1 };
+  return { kind, look: LOOKS[type] ? type : '', msg, data, ch: o.ch != null ? o.ch - 1 : null, label: o.label ? String(o.label) : '', led: Number.isInteger(o.led) ? o.led : null, w: o.w > 1 ? Math.floor(o.w) : 1 };
 }
 function cellStr(c) {
   const std = c.kind === 'btn' ? 1 : 3;
-  return `${c.kind} ${c.msg === std ? '' : c.msg === 3 ? 'cc' : 'n'}${c.data}${c.ch != null ? '@' + (c.ch + 1) : ''}${c.label ? ' ' + c.label : ''}`;
+  return `${c.look || c.kind} ${c.msg === std ? '' : c.msg === 3 ? 'cc' : 'n'}${c.data}${c.ch != null ? '@' + (c.ch + 1) : ''}${c.label ? ' ' + c.label : ''}`;
 }
 
 function parseLayout(raw) {
@@ -414,7 +424,7 @@ function layoutControls(L, baseCh) {
     for (const c of row.cells) {
       if (c) {
         const ch = c.ch != null ? c.ch : baseCh;
-        out.push({ id: cid(c.msg, ch, c.data), kind: c.kind, msg: c.msg, ch, data: c.data, label: c.label, name: c.label || `${msgName(c.msg)} ${c.data}`,
+        out.push({ id: cid(c.msg, ch, c.data), kind: c.kind, look: c.look, msg: c.msg, ch, data: c.data, label: c.label, name: c.label || `${msgName(c.msg)} ${c.data}`,
           led: c.msg === 1 ? (c.led != null ? c.led : L.led) : 0, row: r, col, w: c.w, dk: row.decks, multi });
       }
       col += c ? c.w : 1;
@@ -611,7 +621,7 @@ function moveSel(dx, dy) {
 function tile(c) {
   const mine = entriesOf(c, slot), other = entriesOf(c, !slot);
   const d = mine.length ? describe(mine[0].keyPath) : null, o = other.length ? describe(other[0].keyPath) : null;
-  const cls = ['ctl', c.kind, c.id === sel ? 'sel' : '', mine.length ? (d.deck ? 'd' + d.deck : 'dg') : 'empty'].join(' ');
+  const cls = ['ctl', c.kind, c.look || '', c.id === sel ? 'sel' : '', mine.length ? (d.deck ? 'd' + d.deck : 'dg') : 'empty'].join(' ');
   const text = d ? (d.deck ? `D${d.deck} ` : '') + d.name + (mine.length > 1 ? ` +${mine.length - 1}` : '') : (S.labels[c.id] || (c.extra ? '—' : c.name));
   const sub = o ? `<span class="sub">${slot ? '◦' : '⇧'} ${esc((o.deck ? `D${o.deck} ` : '') + o.name)}</span>` : '';
   const idline = c.extra ? `<span class="id">${esc(S.labels[c.id] || `${c.msg === 1 ? 'N' : 'CC'}${c.data} ch${c.ch + 1}`)}</span>` : '';
@@ -655,7 +665,7 @@ function renderInspector() {
   let h = `<div class="ctlhead"><b>${esc(title)}</b><code>${msgName(c.msg)} ${c.data} · ch ${c.ch + 1} (file: ${c.ch})</code>
     <span class="chip">${slot ? 'Shift' : 'Normal'} layer</span>
     ${c.extra ? `<label class="f">Label <input type="text" id="label" value="${esc(S.labels[c.id] || '')}" placeholder="e.g. Jog L"></label>` : ''}
-    ${c.msg === 1 ? '<button class="btn" id="flash" title="Light this LED on the hardware">Flash LED</button>' : ''}</div>`;
+    ${c.msg === 1 ? ledTestHtml(c) : ''}</div>`;
   if (!list.length) h += `<div class="none">Nothing mapped on this layer. Pick an action below${clip && clip.msg === c.msg ? ', or paste (⌘/Ctrl V)' : ''}.</div>`;
   list.forEach((e) => {
     const i = S.entries.indexOf(e), d = describe(e.keyPath);
@@ -831,7 +841,8 @@ $('#redo').addEventListener('click', () => timeTravel(redo, undo));
 $('#inspector').addEventListener('click', (ev) => {
   const del = ev.target.closest('[data-del]');
   if (del) { S.entries.splice(+del.dataset.del, 1); render(); }
-  if (ev.target.id === 'flash') flashLed();
+  const led = ev.target.closest('[data-led]');
+  if (led) ledTest(+led.dataset.led, led.dataset.off != null);
 });
 $('#inspector').addEventListener('change', (ev) => {
   const el = ev.target;
@@ -947,7 +958,7 @@ function seedLayout() {
   ctrls.forEach((c) => { tally[c.ch] = (tally[c.ch] || 0) + 1; });
   const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
   const base = top ? +top[0] : S.channel;
-  const cells = ctrls.map((c) => cellStr({ kind: c.kind, msg: c.msg, data: c.data, ch: c.ch === base ? null : c.ch, label: S.labels[c.id] || c.label || '' }));
+  const cells = ctrls.map((c) => cellStr({ kind: c.kind, look: c.look, msg: c.msg, data: c.data, ch: c.ch === base ? null : c.ch, label: S.labels[c.id] || c.label || '' }));
   const rows = [];
   for (let i = 0; i < cells.length; i += 8) rows.push(cells.slice(i, i + 8));
   const raw = { name: S.meta.endpointName || lastPort || 'My controller', device: S.meta.endpointName || lastPort || '', channel: base + 1, rows: rows.length ? rows : [[]] };
@@ -959,7 +970,7 @@ const edRaw = () => { try { const raw = JSON.parse($('#ljson').value); parseLayo
 function edSet(raw) { $('#ljson').value = fmtLayout(raw); edRefresh(); }
 function edTile(c) {
   const span = c.w > 1 ? ` style="grid-column: span ${c.w}"` : '';
-  return `<button class="ctl ${c.kind} empty" data-id="${c.id}"${span} title="Click to label">${c.kind === 'btn' ? '' : '<span class="glyph"></span>'}<span class="lbl">${esc(c.label || '—')}</span><span class="id">${c.msg === 1 ? 'N' : 'CC'}${c.data}</span></button>`;
+  return `<button class="ctl ${c.kind} ${c.look || ''} empty" draggable="true" data-id="${c.id}"${span} title="Click to label, drag onto another control to swap">${c.kind === 'btn' ? '' : '<span class="glyph"></span>'}<span class="lbl">${esc(c.label || '—')}</span><span class="id">${c.msg === 1 ? 'N' : 'CC'}${c.data}</span></button>`;
 }
 function edRefresh() {
   const err = $('#lerr');
@@ -1040,6 +1051,35 @@ $('#lpop').addEventListener('click', () => {
   if (list && list.length) list.pop(); else raw.rows.pop();
   edSet(raw);
 });
+// Drag one control onto another to swap them; nothing else moves, so deck columns stay put.
+let dragId = null;
+function edSwap(a, b) {
+  const raw = edRaw();
+  if (!raw || a === b) return;
+  const base = raw.channel == null ? 0 : raw.channel - 1, at = {};
+  edCells(raw, (list, i, c) => { const id = cid(c.msg, c.ch != null ? c.ch : base, c.data); if (id === a || id === b) at[id] = [list, i]; });
+  if (!at[a] || !at[b]) return;
+  const [la, ia] = at[a], [lb, ib] = at[b], t = la[ia];
+  la[ia] = lb[ib]; lb[ib] = t;
+  edSet(raw);
+}
+$('#lprev').addEventListener('dragstart', (ev) => {
+  const t = ev.target.closest('.ctl');
+  if (!t) return;
+  dragId = t.dataset.id; ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', dragId);
+});
+$('#lprev').addEventListener('dragover', (ev) => {
+  const t = ev.target.closest('.ctl');
+  document.querySelectorAll('#lprev .ctl.drop').forEach((e) => e !== t && e.classList.remove('drop'));
+  if (!dragId || !t || t.dataset.id === dragId) return;
+  ev.preventDefault(); t.classList.add('drop');
+});
+$('#lprev').addEventListener('drop', (ev) => {
+  const t = ev.target.closest('.ctl');
+  if (dragId && t) { ev.preventDefault(); edSwap(dragId, t.dataset.id); }
+  dragId = null;
+});
+$('#lprev').addEventListener('dragend', () => { dragId = null; document.querySelectorAll('#lprev .ctl.drop').forEach((e) => e.classList.remove('drop')); });
 $('#lprev').addEventListener('click', (ev) => {
   const b = ev.target.closest('.ctl'), raw = edRaw();
   if (!b || !raw) return;
@@ -1125,16 +1165,25 @@ function onMidi(ev) {
   }
 }
 
-function flashLed() {
+// LED test: light the selected button's LED with the base note and the layout's colour offsets.
+function ledNotes(c) {
+  const notes = [c.data];
+  if (c.led) for (const n of [c.data + c.led, c.data + 2 * c.led]) if (n <= 127) notes.push(n);
+  return notes;
+}
+function ledTestHtml(c) {
+  const b = ledNotes(c).map((n, i) => `<button class="btn" data-led="${n}" title="Send note ${n} on — ${i ? `base note + ${i === 1 ? '' : '2 × '}layout "led" offset (${c.led})` : 'base note'}">${n}</button>`).join('');
+  return `<span class="ledtest" title="Lights this LED on the hardware. If a colour is wrong, change &quot;led&quot; in the layout.">LED test <button class="btn" data-led="${c.data}" data-off title="Send note off for every colour">off</button>${b}</span>`;
+}
+function ledTest(note, off) {
   const c = selected();
-  if (!midi || !c) return;
-  const outs = [...midi.outputs.values()];
+  if (!c) return;
+  const outs = midi ? [...midi.outputs.values()] : [];
   const out = outs.find((o) => o.name === (S.meta.endpointName || lastPort)) || outs[0];
   if (!out) { toast('No MIDI output available'); return; }
-  const e = entriesOf(c, slot)[0];
-  const note = e && e.output && Number.isInteger(e.output.midiData) ? e.output.midiData : c.data;
-  out.send([0x90 | c.ch, note, 127]);
-  setTimeout(() => out.send([0x80 | c.ch, note, 0]), 500);
+  for (const n of ledNotes(c)) out.send([0x80 | c.ch, n, 0]);   // one colour at a time
+  if (!off) out.send([0x90 | c.ch, note, 127]);
+  toast(off ? `LED off → ${out.name}` : `Note ${note} on, ch ${c.ch + 1} → ${out.name}`);
 }
 
 function midiPorts() {

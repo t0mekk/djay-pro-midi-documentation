@@ -32,7 +32,7 @@ Safest start for a new device: do one MIDI Learn in djay so it writes a mapping 
 |---|---|
 | Shift layer | Map a button to **Shift (modifier)**, switch to the *Shift* layer (or press `S`), map as usual. Each tile shows the other layer's mapping as a small second line. With *Follow hardware* on, holding the mapped Shift button on the hardware shows the Shift layer. |
 | Whole row at once | Tick *whole row*: one pick maps every control of the same kind in the row, one deck per column. *Columns → decks* sets which deck each column drives (e.g. `3 1 2 4`). Only offered for layouts with deck columns. |
-| LED feedback | Per button: off, default, and (if the layout sets `led`) amber/green, sent as a separate output note at +`led` / +2×`led` (+36 / +72 on the K2). *Flash LED* lights the selected button. |
+| LED feedback | Per button: off, default, and (if the layout sets `led`) amber/green, sent as a separate output note at +`led` / +2×`led` (+36 / +72 on the K2). *LED test* next to the selected button sends the notes to the hardware: *off*, the base note, +`led` and +2×`led`. If a colour is wrong, change `led` in the layout. |
 | Encoders | Mapped as `rotary` automatically; sensitivity and *flipped* are editable. |
 | Undo / redo | Header buttons, or `Ctrl/Cmd+Z` (add `Shift` for redo). |
 | Copy / paste | `Ctrl/Cmd+C` / `V` copies a mapping to another control of the same message type; the deck is re-targeted by column. |
@@ -48,7 +48,7 @@ A layout only describes what the hardware looks like; mappings never depend on i
 **Layout editor** (*Edit layout…* / *Create layout…*): JSON on the left with live validation, a live preview on the right.
 
 - With *add touched controls* ticked, controls you touch on the hardware are appended to the last row; endless encoders are detected automatically.
-- *New row*, *Gap* and *Remove last* edit the end of the layout. Click a preview tile to label it.
+- *New row*, *Gap* and *Remove last* edit the end of the layout. Click a preview tile to label it. Drag a tile onto another to swap the two (also across rows); nothing else moves, so deck columns stay put.
 - *From learned controls* seeds a layout from the controls seen so far.
 - *Load .json…* / *Download .json* import and export a layout file. *Save & use* stores it; *Delete layout* removes a user layout.
 
@@ -92,10 +92,10 @@ Rows:
 
 Controls:
 
-- A string: `"pot 4"`, `"fader 16 Volume"`, `"enc 0 Browse"`, `"btn 36 Play"` (kind, number, optional label). Kinds are `btn`, `pot`, `fader`, `enc`. Buttons default to notes, everything else to CC; override with `"btn cc12"` or `"pot n5"`. A `@16` suffix (e.g. `"btn 36@16 Play"`) puts one control on its own channel. `"-"` is a blank cell.
+- A string: `"pot 4"`, `"fader 16 Volume"`, `"enc 0 Browse"`, `"btn 36 Play"` (kind, number, optional label). Kinds are `btn`, `pot`, `fader`, `enc`, plus two look-only kinds: `jog` (drawn as a large wheel, behaves like `enc`) and `strip` (drawn as a horizontal strip, behaves like `fader`). Buttons default to notes, everything else to CC; override with `"btn cc12"` or `"pot n5"`. A `@16` suffix (e.g. `"btn 36@16 Play"`) puts one control on its own channel. `"-"` is a blank cell.
 - An object: `{"type": "btn", "note": 12, "label": "Layer", "led": 4, "w": 2}`. Use `cc` or `note` for the number, `ch` (1-16) for its own channel, `led` to override the LED offset for that button, `w` for width in cells.
 
-**Xone:4D:** no 4D layout is bundled because its MIDI map is not documented in this repository. Create one with *Create layout…*, touching each control (or *From learned controls* after a Learn session), then label the tiles.
+**Xone:4D:** no 4D layout is bundled because its MIDI map is not documented in this repository. Create one with *Create layout…*, touching each control (or *From learned controls* after a Learn session), then label the tiles. Touching cannot tell a jog wheel from an encoder or a touch strip from a fader: change `enc` to `jog` / `fader` to `strip` in the JSON by hand.
 
 ## Known limits
 
