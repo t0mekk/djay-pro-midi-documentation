@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Regenerates the action catalog embedded in tool/index.html from the function tables in REFERENCE.md.
-// Run: node tool/build-actions.mjs
-import { readFileSync, writeFileSync } from 'node:fs';
+// Regenerates what is embedded in tool/index.html:
+//   - the action catalog, from the function tables in REFERENCE.md
+//   - the bundled hardware layouts, from tool/layouts/*.json
+// Run: node tool/build.mjs
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -68,9 +70,19 @@ for (const line of lines) {
   });
 }
 
+const layouts = {};
+for (const f of readdirSync(join(here, 'layouts')).filter((f) => f.endsWith('.json')).sort()) {
+  layouts[f.replace(/\.json$/, '')] = JSON.parse(readFileSync(join(here, 'layouts', f), 'utf8'));
+}
+
 const page = join(here, 'index.html');
-const html = readFileSync(page, 'utf8');
-const marker = /\/\*ACTIONS-START\*\/[\s\S]*?\/\*ACTIONS-END\*\//;
-if (!marker.test(html)) throw new Error('ACTIONS markers not found in index.html');
-writeFileSync(page, html.replace(marker, () => `/*ACTIONS-START*/${JSON.stringify(actions)}/*ACTIONS-END*/`));
-console.log(`${actions.length} actions in ${new Set(actions.map((a) => a.g)).size} groups`);
+let html = readFileSync(page, 'utf8');
+const inject = (tag, value) => {
+  const marker = new RegExp(`/\\*${tag}-START\\*/[\\s\\S]*?/\\*${tag}-END\\*/`);
+  if (!marker.test(html)) throw new Error(`${tag} markers not found in index.html`);
+  html = html.replace(marker, () => `/*${tag}-START*/${JSON.stringify(value)}/*${tag}-END*/`);
+};
+inject('ACTIONS', actions);
+inject('LAYOUTS', layouts);
+writeFileSync(page, html);
+console.log(`${actions.length} actions in ${new Set(actions.map((a) => a.g)).size} groups, ${Object.keys(layouts).length} layout(s)`);

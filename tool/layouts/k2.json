@@ -1,0 +1,29 @@
+{
+  "name": "Xone:K2",
+  "device": "XONE:K2",
+  "match": "xone:?\\s?k2",
+  "usbId": 586153985,
+  "channel": 15,
+  "decks": [1, 2, 3, 4],
+  "led": 36,
+  "rows": [
+    ["enc 0 Encoder 1", "enc 1 Encoder 2", "enc 2 Encoder 3", "enc 3 Encoder 4"],
+    ["btn 52 Enc 1 push", "btn 53 Enc 2 push", "btn 54 Enc 3 push", "btn 55 Enc 4 push"],
+    ["pot 4 Pot 1", "pot 5 Pot 1", "pot 6 Pot 1", "pot 7 Pot 1"],
+    ["btn 48 Pot 1 btn", "btn 49 Pot 1 btn", "btn 50 Pot 1 btn", "btn 51 Pot 1 btn"],
+    ["pot 8 Pot 2", "pot 9 Pot 2", "pot 10 Pot 2", "pot 11 Pot 2"],
+    ["btn 44 Pot 2 btn", "btn 45 Pot 2 btn", "btn 46 Pot 2 btn", "btn 47 Pot 2 btn"],
+    ["pot 12 Pot 3", "pot 13 Pot 3", "pot 14 Pot 3", "pot 15 Pot 3"],
+    ["btn 40 Pot 3 btn", "btn 41 Pot 3 btn", "btn 42 Pot 3 btn", "btn 43 Pot 3 btn"],
+    "gap",
+    ["fader 16 Fader 1", "fader 17 Fader 2", "fader 18 Fader 3", "fader 19 Fader 4"],
+    "gap",
+    ["btn 36 A", "btn 37 B", "btn 38 C", "btn 39 D"],
+    ["btn 32 E", "btn 33 F", "btn 34 G", "btn 35 H"],
+    ["btn 28 I", "btn 29 J", "btn 30 K", "btn 31 L"],
+    ["btn 24 M", "btn 25 N", "btn 26 O", "btn 27 P"],
+    "gap",
+    {"decks": false, "cells": [{"type": "btn", "note": 12, "label": "Layer", "led": 4}, "enc 20 Enc L", "enc 21 Enc R", {"type": "btn", "note": 15, "label": "Exit setup", "led": 4}]},
+    {"decks": false, "cells": ["-", {"type": "btn", "note": 13, "label": "Enc L push", "led": 0}, {"type": "btn", "note": 14, "label": "Enc R push", "led": 0}, "-"]}
+  ]
+}
